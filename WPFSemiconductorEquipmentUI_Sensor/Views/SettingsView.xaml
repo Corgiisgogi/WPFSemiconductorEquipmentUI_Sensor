@@ -1,0 +1,236 @@
+<UserControl x:Class="WPFSemiconductorEquipmentUI_Sensor.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.Controls">
+    <UserControl.Resources>
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Height" Value="34" />
+        </Style>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <DockPanel>
+            <StackPanel Margin="0,0,10,0">
+                <TextBlock Text="System Settings" Style="{StaticResource PageTitleText}" />
+                <TextBlock Text="Connection, access, risk rules, and storage policy." Style="{StaticResource BodyText}" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" >
+                <controls:StatusBadge Text="ADMIN ONLY" Tone="Danger" Margin="0,0,8,0" />
+                <controls:StatusBadge Text="SAFE DEFAULTS" Tone="Normal" Margin="0,0,8,0" />
+                <controls:StatusBadge Text="LOCAL CONFIG" Tone="Blue" />
+            </StackPanel>
+        </DockPanel>
+
+        <Border Margin="0,16,0,0"
+                CornerRadius="8"
+                Background="{StaticResource BrushWarningSoft}"
+                BorderBrush="#E7C26A"
+                BorderThickness="1"
+                Padding="16">
+            <DockPanel>
+                <controls:StatusBadge Text="CAUTION" Tone="Warning" Margin="0,0,14,0" />
+                <TextBlock Text="Review risk thresholds and shutdown policy before saving."
+                           Style="{StaticResource BodyStrongText}"
+                           TextWrapping="Wrap" />
+            </DockPanel>
+        </Border>
+
+        <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="Connection" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="ONLINE" Tone="Normal" />
+                        </DockPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="EtherCAT connection" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <controls:StatusBadge Grid.Column="1" Text="READY" Tone="Normal" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Equipment ID" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="EQP-TRAINER-01" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="SQLite DB path" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="C:/Data/equipment.db" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Sync interval" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="1000 ms" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="Authentication" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="APPROVAL REQUIRED" Tone="Warning" />
+                        </DockPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Approved users only" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Block Pending accounts" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Session timeout" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="15 min" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Control role" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="Operator Level 1" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="AI Risk Rule" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="WATCH ACTIVE" Tone="Warning" />
+                        </DockPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Pressure warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="3.0 bar" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Temperature warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="40 C" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Humidity range" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="30 - 60 %" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Auto shutdown condition" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="2 warnings / 60 sec" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="Shutdown Policy" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="PROTECTED" Tone="Danger" />
+                        </DockPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Force Shutdown enabled" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="64" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Require admin confirm" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="Storage" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="BACKUP OK" Tone="Normal" />
+                        </DockPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Log retention" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="90 days" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Sensor save rate" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="1 sec" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="SAVE" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
+                        <Button Content="RESET" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        <Button Content="TEST" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</UserControl>
