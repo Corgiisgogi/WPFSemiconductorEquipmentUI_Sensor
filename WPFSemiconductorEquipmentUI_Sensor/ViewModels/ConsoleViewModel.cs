@@ -12,11 +12,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class ConsoleViewModel : ScreenViewModelBase, IDisposable
     {
         private const int StaleReadThreshold = 6;
-        private const int CommandPulseMilliseconds = 200;
-        private const int ProcessStartOutputBit = 1;
-        private const int ProcessStopOutputBit = 2;
-        private const int AiControlStartOutputBit = 3;
-        private const int AiControlStopOutputBit = 4;
         private const double PressureWarningThreshold = 0.80d;
         private const double TemperatureWarningThreshold = 40d;
         private const double VibrationWarningThreshold = 7d;
@@ -128,10 +123,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             RiskStatusTone = "Normal";
             RiskDetailText = "압력, 진동, 온도 기준으로 위험 조건을 감시합니다.";
             SetDigitalInputs(false, false, false, false, false, false);
-            ProcessStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStartOutputBit, "DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
-            ProcessStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStopOutputBit, "DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
-            AiControlStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStartOutputBit, "DI3 AI Control Start", true), parameter => CanExecuteAdminCommand());
-            AiControlStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStopOutputBit, "DI4 AI Control Stop", true), parameter => CanExecuteAdminCommand());
+            ProcessStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
+            ProcessStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
+            AiControlStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI3 AI Control Start", true), parameter => CanExecuteAdminCommand());
+            AiControlStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI4 AI Control Stop", true), parameter => CanExecuteAdminCommand());
             ForceShutdownCommand = new RelayCommand(parameter => ExecuteForceShutdown(false), parameter => CanExecuteForceShutdown());
 
             _pollingTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -366,7 +361,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             return !_disposed && (_session.IsAdmin || _forceShutdownAllowedByRisk);
         }
 
-        private void ExecuteDigitalOutputCommand(int outputBit, string commandName, bool adminOnly)
+        private void ExecuteControlCommand(string commandName, bool adminOnly)
         {
             if (adminOnly && !_session.IsAdmin)
             {
@@ -380,21 +375,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            try
-            {
-                _trainerClient.PulseDigitalOutput(outputBit, CommandPulseMilliseconds);
-                AddActivityLog("Control", commandName + " command sent", adminOnly ? "WARN" : "INFO");
-                SummaryBadgeText = "COMMAND SENT";
-                SummaryTone = adminOnly ? "Warning" : "Normal";
-                SummaryText = commandName + " was pulsed on GVL.NX_OD5121 bit " + outputBit + " for " + CommandPulseMilliseconds + " ms.";
-            }
-            catch (Exception ex)
-            {
-                AddActivityLog("Control", commandName + " failed: " + ex.Message, "RISK");
-                SummaryBadgeText = "COMMAND ERROR";
-                SummaryTone = "Danger";
-                SummaryText = commandName + " could not be sent. " + ex.Message;
-            }
+            AddActivityLog("Control", commandName + " command accepted", adminOnly ? "WARN" : "INFO");
+            SummaryBadgeText = "COMMAND READY";
+            SummaryTone = adminOnly ? "Warning" : "Normal";
+            SummaryText = commandName + " was accepted by the WPF command layer. NX_OD5121 DO2~DO4 are reserved for status lamps and are not pulsed by this command.";
         }
 
         private void ExecuteForceShutdown(bool automatic)
@@ -411,21 +395,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            try
-            {
-                _trainerClient.PulseDigitalOutput(ProcessStopOutputBit, CommandPulseMilliseconds);
-                AddActivityLog(automatic ? "AI Rule" : "Control", automatic ? "Auto Force Shutdown command sent" : "Force Shutdown command sent", "RISK");
-                SummaryBadgeText = automatic ? "AUTO STOP" : "FORCE STOP";
-                SummaryTone = "Danger";
-                SummaryText = "Force Shutdown pulsed GVL.NX_OD5121 stop bit " + ProcessStopOutputBit + " for " + CommandPulseMilliseconds + " ms.";
-            }
-            catch (Exception ex)
-            {
-                AddActivityLog(automatic ? "AI Rule" : "Control", "Force Shutdown failed: " + ex.Message, "RISK");
-                SummaryBadgeText = "STOP ERROR";
-                SummaryTone = "Danger";
-                SummaryText = "Force Shutdown could not be sent. " + ex.Message;
-            }
+            AddActivityLog(automatic ? "AI Rule" : "Control", automatic ? "Auto Force Shutdown event raised" : "Force Shutdown event raised", "RISK");
+            SummaryBadgeText = automatic ? "AUTO STOP" : "FORCE STOP";
+            SummaryTone = "Danger";
+            SummaryText = "Force Shutdown event was raised in the WPF command layer. NX_OD5121 DO2~DO4 are reserved for status lamps and are not pulsed by this command.";
         }
 
         private void AddActivityLog(string source, string eventText, string severity)
@@ -772,22 +745,22 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             if (snapshot.DigitalInput1 && !_lastDigitalInput1)
             {
-                ExecuteDigitalOutputCommand(ProcessStartOutputBit, "DI1 Process Start", false);
+                ExecuteControlCommand("DI1 Process Start", false);
             }
 
             if (snapshot.DigitalInput2 && !_lastDigitalInput2)
             {
-                ExecuteDigitalOutputCommand(ProcessStopOutputBit, "DI2 Process Stop", false);
+                ExecuteControlCommand("DI2 Process Stop", false);
             }
 
             if (snapshot.DigitalInput3 && !_lastDigitalInput3)
             {
-                ExecuteDigitalOutputCommand(AiControlStartOutputBit, "DI3 AI Control Start", true);
+                ExecuteControlCommand("DI3 AI Control Start", true);
             }
 
             if (snapshot.DigitalInput4 && !_lastDigitalInput4)
             {
-                ExecuteDigitalOutputCommand(AiControlStopOutputBit, "DI4 AI Control Stop", true);
+                ExecuteControlCommand("DI4 AI Control Stop", true);
             }
 
             SaveDigitalInputCommandState(snapshot);
