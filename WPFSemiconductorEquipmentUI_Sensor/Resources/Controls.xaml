@@ -33,6 +33,14 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{StaticResource BrushDisabledSoft}" />
+                <Setter Property="Foreground" Value="{StaticResource BrushDisabled}" />
+                <Setter Property="BorderBrush" Value="{StaticResource BrushDisabledSoft}" />
+                <Setter Property="Cursor" Value="Arrow" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">

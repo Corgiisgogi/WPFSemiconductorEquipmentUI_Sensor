@@ -133,6 +133,7 @@
     <Compile Include="ViewModels\SampleData.cs" />
     <Compile Include="ViewModels\ScreenViewModelBase.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
+    <Compile Include="ViewModels\UserSession.cs" />
     <Compile Include="ViewModels\ViewModelBase.cs" />
     <Compile Include="Views\ConsoleView.xaml.cs">
       <DependentUpon>ConsoleView.xaml</DependentUpon>

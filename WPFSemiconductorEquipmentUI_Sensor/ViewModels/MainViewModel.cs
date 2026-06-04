@@ -12,8 +12,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         public MainViewModel()
         {
-            var auth = new LoginViewModel();
-            var console = new ConsoleViewModel();
+            Session = new UserSession();
+
+            var auth = new LoginViewModel(Session);
+            var console = new ConsoleViewModel(Session);
             var logs = new LogsViewModel();
             var settings = new SettingsViewModel();
 
@@ -33,6 +35,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public ObservableCollection<NavigationItem> NavigationItems { get; private set; }
         public PendingViewModel PendingViewModel { get; private set; }
         public ICommand NavigateCommand { get; private set; }
+        public UserSession Session { get; private set; }
 
         public object CurrentViewModel
         {

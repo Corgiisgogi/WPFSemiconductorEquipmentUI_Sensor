@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 using System.Windows.Threading;
 using WPFSemiconductorEquipmentUI_Sensor.Models;
 using WPFSemiconductorEquipmentUI_Sensor.Services;
@@ -10,14 +12,25 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class ConsoleViewModel : ScreenViewModelBase, IDisposable
     {
         private const int StaleReadThreshold = 6;
+        private const int CommandPulseMilliseconds = 200;
+        private const int ProcessStartOutputBit = 1;
+        private const int ProcessStopOutputBit = 2;
+        private const int AiControlStartOutputBit = 3;
+        private const int AiControlStopOutputBit = 4;
 
         private readonly ITrainerClient _trainerClient;
         private readonly DispatcherTimer _pollingTimer;
+        private readonly UserSession _session;
         private bool _disposed;
         private bool _isReading;
         private int _successfulReadCount;
         private int _unchangedReadCount;
         private bool _hasLastRawSnapshot;
+        private bool _hasDigitalInputCommandState;
+        private bool _lastDigitalInput1;
+        private bool _lastDigitalInput2;
+        private bool _lastDigitalInput3;
+        private bool _lastDigitalInput4;
         private short _lastPressureRaw;
         private short _lastVibrationRaw;
         private short _lastTemperatureRaw;
@@ -44,13 +57,25 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _inductiveSensorTone;
 
         public ConsoleViewModel()
-            : this(new AdsSensorTrainerClient())
+            : this(new UserSession(), new AdsSensorTrainerClient())
+        {
+        }
+
+        public ConsoleViewModel(UserSession session)
+            : this(session, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(ITrainerClient trainerClient)
+            : this(new UserSession(), trainerClient)
         {
+        }
+
+        public ConsoleViewModel(UserSession session, ITrainerClient trainerClient)
+        {
+            _session = session;
             _trainerClient = trainerClient;
+            _session.PropertyChanged += OnSessionPropertyChanged;
 
             Title = "WPF Equipment Control Console";
             Description = "Desktop interface for field control, sensor review, and activity monitoring.";
@@ -74,6 +99,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SummaryTone = "Disabled";
             SummaryText = "Waiting for TwinCAT ADS connection. Last known sensor values will remain visible if reads fail.";
             SetDigitalInputs(false, false, false, false, false, false);
+            ProcessStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStartOutputBit, "DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
+            ProcessStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStopOutputBit, "DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
+            AiControlStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStartOutputBit, "DI3 AI Control Start", true), parameter => CanExecuteAdminCommand());
+            AiControlStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStopOutputBit, "DI4 AI Control Stop", true), parameter => CanExecuteAdminCommand());
 
             _pollingTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -83,8 +112,27 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _pollingTimer.Start();
         }
 
+        public UserSession Session
+        {
+            get { return _session; }
+        }
+
         public ObservableCollection<SensorMetric> Sensors { get; private set; }
         public ObservableCollection<ActivityLogItem> ActivityLogs { get; private set; }
+        public ICommand ProcessStartCommand { get; private set; }
+        public ICommand ProcessStopCommand { get; private set; }
+        public ICommand AiControlStartCommand { get; private set; }
+        public ICommand AiControlStopCommand { get; private set; }
+
+        public string AiControlAccessText
+        {
+            get { return _session.IsAdmin ? "ADMIN READY" : "ADMIN REQUIRED"; }
+        }
+
+        public string AiControlAccessTone
+        {
+            get { return _session.IsAdmin ? "Normal" : "Danger"; }
+        }
 
         public string ConnectionStatusText
         {
@@ -216,6 +264,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _disposed = true;
             _pollingTimer.Stop();
             _pollingTimer.Tick -= OnPollingTimerTick;
+            _session.PropertyChanged -= OnSessionPropertyChanged;
             TrySetRunningLampOff();
             _trainerClient.Dispose();
         }
@@ -229,6 +278,70 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             catch
             {
             }
+        }
+
+        private void OnSessionPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "IsApproved" || e.PropertyName == "IsAdmin" || e.PropertyName == "RoleText" || e.PropertyName == "UserId")
+            {
+                OnPropertyChanged("AiControlAccessText");
+                OnPropertyChanged("AiControlAccessTone");
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private bool CanExecuteApprovedCommand()
+        {
+            return !_disposed && _session.IsApproved;
+        }
+
+        private bool CanExecuteAdminCommand()
+        {
+            return !_disposed && _session.IsAdmin;
+        }
+
+        private void ExecuteDigitalOutputCommand(int outputBit, string commandName, bool adminOnly)
+        {
+            if (adminOnly && !_session.IsAdmin)
+            {
+                AddActivityLog("Control", commandName + " blocked - admin required", "RISK");
+                return;
+            }
+
+            if (!_session.IsApproved)
+            {
+                AddActivityLog("Control", commandName + " blocked - approved login required", "RISK");
+                return;
+            }
+
+            try
+            {
+                _trainerClient.PulseDigitalOutput(outputBit, CommandPulseMilliseconds);
+                AddActivityLog("Control", commandName + " command sent", adminOnly ? "WARN" : "INFO");
+                SummaryBadgeText = "COMMAND SENT";
+                SummaryTone = adminOnly ? "Warning" : "Normal";
+                SummaryText = commandName + " was pulsed on GVL.NX_OD5121 bit " + outputBit + " for " + CommandPulseMilliseconds + " ms.";
+            }
+            catch (Exception ex)
+            {
+                AddActivityLog("Control", commandName + " failed: " + ex.Message, "RISK");
+                SummaryBadgeText = "COMMAND ERROR";
+                SummaryTone = "Danger";
+                SummaryText = commandName + " could not be sent. " + ex.Message;
+            }
+        }
+
+        private void AddActivityLog(string source, string eventText, string severity)
+        {
+            ActivityLogs.Insert(0, new ActivityLogItem
+            {
+                Time = DateTime.Now.ToString("HH:mm:ss"),
+                Source = source,
+                User = _session.UserId,
+                Event = eventText,
+                Severity = severity,
+                Saved = "NO"
+            });
         }
 
         private void OnPollingTimerTick(object sender, EventArgs e)
@@ -318,6 +431,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.DigitalInput4,
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
+            HandleDigitalInputCommands(snapshot);
 
             ConnectionStatusText = "ADS READ OK";
             ConnectionStatusTone = "Normal";
@@ -354,6 +468,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.DigitalInput4,
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
+            HandleDigitalInputCommands(snapshot);
 
             ConnectionStatusText = "STALE";
             ConnectionStatusTone = "Warning";
@@ -455,6 +570,46 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SetDigitalStatus(digitalInput4, out _digitalInput4Text, out _digitalInput4Tone, "DigitalInput4Text", "DigitalInput4Tone");
             SetDigitalStatus(opticalSensor, out _opticalSensorText, out _opticalSensorTone, "OpticalSensorText", "OpticalSensorTone");
             SetDigitalStatus(inductiveSensor, out _inductiveSensorText, out _inductiveSensorTone, "InductiveSensorText", "InductiveSensorTone");
+        }
+
+        private void HandleDigitalInputCommands(SensorTrainerSnapshot snapshot)
+        {
+            if (!_hasDigitalInputCommandState)
+            {
+                SaveDigitalInputCommandState(snapshot);
+                return;
+            }
+
+            if (snapshot.DigitalInput1 && !_lastDigitalInput1)
+            {
+                ExecuteDigitalOutputCommand(ProcessStartOutputBit, "DI1 Process Start", false);
+            }
+
+            if (snapshot.DigitalInput2 && !_lastDigitalInput2)
+            {
+                ExecuteDigitalOutputCommand(ProcessStopOutputBit, "DI2 Process Stop", false);
+            }
+
+            if (snapshot.DigitalInput3 && !_lastDigitalInput3)
+            {
+                ExecuteDigitalOutputCommand(AiControlStartOutputBit, "DI3 AI Control Start", true);
+            }
+
+            if (snapshot.DigitalInput4 && !_lastDigitalInput4)
+            {
+                ExecuteDigitalOutputCommand(AiControlStopOutputBit, "DI4 AI Control Stop", true);
+            }
+
+            SaveDigitalInputCommandState(snapshot);
+        }
+
+        private void SaveDigitalInputCommandState(SensorTrainerSnapshot snapshot)
+        {
+            _lastDigitalInput1 = snapshot.DigitalInput1;
+            _lastDigitalInput2 = snapshot.DigitalInput2;
+            _lastDigitalInput3 = snapshot.DigitalInput3;
+            _lastDigitalInput4 = snapshot.DigitalInput4;
+            _hasDigitalInputCommandState = true;
         }
 
         private void SetDigitalStatus(bool isOn, out string textField, out string toneField, string textPropertyName, string tonePropertyName)
