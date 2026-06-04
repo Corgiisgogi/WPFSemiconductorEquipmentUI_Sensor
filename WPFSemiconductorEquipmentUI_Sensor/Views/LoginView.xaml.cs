@@ -1,4 +1,5 @@
 using System.Windows.Controls;
+using WPFSemiconductorEquipmentUI_Sensor.ViewModels;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.Views
 {
@@ -7,6 +8,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Views
         public LoginView()
         {
             InitializeComponent();
+        }
+
+        private void OnPasswordChanged(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var viewModel = DataContext as LoginViewModel;
+            var passwordBox = sender as PasswordBox;
+            if (viewModel != null && passwordBox != null)
+            {
+                viewModel.Password = passwordBox.Password;
+            }
         }
     }
 }

@@ -12,16 +12,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class ConsoleViewModel : ScreenViewModelBase, IDisposable
     {
         private const int StaleReadThreshold = 6;
-        private const double PressureWarningThreshold = 0.80d;
-        private const double TemperatureWarningThreshold = 40d;
-        private const double VibrationWarningThreshold = 7d;
-        private const int RiskWindowSeconds = 60;
-        private const int AutoShutdownWarningLimit = 2;
-        private const int SensorSnapshotSaveIntervalSeconds = 1;
-
         private readonly ITrainerClient _trainerClient;
         private readonly ActivityLogStore _activityLogStore;
         private readonly SensorSnapshotRepository _sensorSnapshotRepository;
+        private readonly AppSettingsStore _settings;
         private readonly DispatcherTimer _pollingTimer;
         private readonly UserSession _session;
         private bool _disposed;
@@ -69,40 +63,46 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _inductiveSensorTone;
 
         public ConsoleViewModel()
-            : this(new UserSession(), new ActivityLogStore(), null, new AdsSensorTrainerClient())
+            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session)
-            : this(session, new ActivityLogStore(), null, new AdsSensorTrainerClient())
+            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore)
-            : this(session, activityLogStore, null, new AdsSensorTrainerClient())
+            : this(session, activityLogStore, null, new AppSettingsStore(), new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(ITrainerClient trainerClient)
-            : this(new UserSession(), new ActivityLogStore(), null, trainerClient)
+            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ITrainerClient trainerClient)
-            : this(session, new ActivityLogStore(), null, trainerClient)
+            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository)
-            : this(session, activityLogStore, sensorSnapshotRepository, new AdsSensorTrainerClient())
+            : this(session, activityLogStore, sensorSnapshotRepository, new AppSettingsStore(), new AdsSensorTrainerClient())
         {
         }
 
-        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, ITrainerClient trainerClient)
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings)
+            : this(session, activityLogStore, sensorSnapshotRepository, settings, new AdsSensorTrainerClient())
+        {
+        }
+
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings, ITrainerClient trainerClient)
         {
             _session = session;
             _activityLogStore = activityLogStore;
             _sensorSnapshotRepository = sensorSnapshotRepository;
+            _settings = settings ?? new AppSettingsStore();
             _trainerClient = trainerClient;
             _riskWindowStartedAt = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
@@ -130,7 +130,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SummaryText = "Waiting for TwinCAT ADS connection. Last known sensor values will remain visible if reads fail.";
             RiskStatusText = "AI READY";
             RiskStatusTone = "Normal";
-            RiskDetailText = "압력, 진동, 온도 기준으로 위험 조건을 감시합니다.";
+            RiskDetailText = "압력, 진동, 온도, 습도 기준으로 위험 조건을 감시합니다.";
             SetDigitalInputs(false, false, false, false, false, false);
             ProcessStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
             ProcessStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
@@ -503,7 +503,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
-            EvaluateRiskRules(pressure, vibration, temperature);
+            EvaluateRiskRules(pressure, vibration, temperature, humidity);
             TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
             ConnectionStatusText = "ADS READ OK";
@@ -546,7 +546,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
-            EvaluateRiskRules(pressure, vibration, temperature);
+            EvaluateRiskRules(pressure, vibration, temperature, humidity);
             TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
             ConnectionStatusText = "STALE";
@@ -578,7 +578,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             var now = DateTime.Now;
             if (_lastSensorSnapshotSavedAt != DateTime.MinValue
-                && (now - _lastSensorSnapshotSavedAt).TotalSeconds < SensorSnapshotSaveIntervalSeconds)
+                && (now - _lastSensorSnapshotSavedAt).TotalSeconds < _settings.SensorSnapshotSaveIntervalSeconds)
             {
                 return;
             }
@@ -633,30 +633,37 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SummaryText = "Unable to read TwinCAT ADS data. Check TwinCAT runtime, ADS route, port 851, and GVL.NX_* variables. " + ex.Message;
         }
 
-        private void EvaluateRiskRules(double pressure, double vibration, double temperature)
+        private void EvaluateRiskRules(double pressure, double vibration, double temperature, double humidity)
         {
             var warningCount = 0;
             var details = string.Empty;
 
-            if (pressure >= PressureWarningThreshold)
+            if (pressure >= _settings.PressureWarningThreshold)
             {
                 warningCount++;
                 details = AppendRiskDetail(details, "Pressure " + pressure.ToString("0.00") + " bar");
                 SetSensorWarning(Sensors[0]);
             }
 
-            if (vibration >= VibrationWarningThreshold)
+            if (vibration >= _settings.VibrationWarningThreshold)
             {
                 warningCount++;
                 details = AppendRiskDetail(details, "Vibration " + vibration.ToString("0.0"));
                 SetSensorWarning(Sensors[1]);
             }
 
-            if (temperature >= TemperatureWarningThreshold)
+            if (temperature >= _settings.TemperatureWarningThreshold)
             {
                 warningCount++;
                 details = AppendRiskDetail(details, "Temperature " + temperature.ToString("0.0") + " C");
                 SetSensorWarning(Sensors[2]);
+            }
+
+            if (humidity >= _settings.HumidityWarningThreshold)
+            {
+                warningCount++;
+                details = AppendRiskDetail(details, "Humidity " + humidity.ToString("0.0") + " %");
+                SetSensorWarning(Sensors[3]);
             }
 
             if (warningCount == 0)
@@ -674,7 +681,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             var now = DateTime.Now;
-            if (_riskWindowStartedAt == DateTime.MinValue || (now - _riskWindowStartedAt).TotalSeconds > RiskWindowSeconds)
+            if (_riskWindowStartedAt == DateTime.MinValue || (now - _riskWindowStartedAt).TotalSeconds > _settings.RiskWindowSeconds)
             {
                 _riskWindowStartedAt = now;
                 _riskWarningCount = 0;
@@ -683,17 +690,17 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             if (!_wasRiskWarningActive)
             {
                 _riskWarningCount += warningCount;
-                AddActivityLog("AI Rule", details + " exceeded. Risk count " + _riskWarningCount + "/" + AutoShutdownWarningLimit + " within " + RiskWindowSeconds + "s.", _riskWarningCount >= AutoShutdownWarningLimit ? "RISK" : "WARN");
+                AddActivityLog("AI Rule", details + " exceeded. Risk count " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit + " within " + _settings.RiskWindowSeconds + "s.", _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
             }
 
             _wasRiskWarningActive = true;
             _forceShutdownAllowedByRisk = true;
-            RiskStatusText = _riskWarningCount >= AutoShutdownWarningLimit ? "AI RISK" : "AI WARNING";
-            RiskStatusTone = _riskWarningCount >= AutoShutdownWarningLimit ? "Danger" : "Warning";
-            RiskDetailText = details + " exceeded. Risk count " + _riskWarningCount + "/" + AutoShutdownWarningLimit + " within " + RiskWindowSeconds + "s.";
+            RiskStatusText = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "AI RISK" : "AI WARNING";
+            RiskStatusTone = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "Danger" : "Warning";
+            RiskDetailText = details + " exceeded. Risk count " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit + " within " + _settings.RiskWindowSeconds + "s.";
             NotifyForceShutdownStateChanged();
 
-            if (_riskWarningCount >= AutoShutdownWarningLimit && !_autoShutdownIssued)
+            if (_riskWarningCount >= _settings.AutoShutdownWarningLimit && !_autoShutdownIssued)
             {
                 _autoShutdownIssued = true;
                 ExecuteForceShutdown(true);

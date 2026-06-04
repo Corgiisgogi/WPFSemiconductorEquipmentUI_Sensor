@@ -17,7 +17,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" >
                 <controls:StatusBadge Text="ADMIN ONLY" Tone="Danger" Margin="0,0,8,0" />
                 <controls:StatusBadge Text="SAFE DEFAULTS" Tone="Normal" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="LOCAL CONFIG" Tone="Blue" />
+                <controls:StatusBadge Text="{Binding SettingsStatusText}" Tone="{Binding SettingsStatusTone}" />
             </StackPanel>
         </DockPanel>
 
@@ -72,15 +72,23 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="SQLite DB path" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="C:/Data/equipment.db" />
+                            <TextBox Grid.Column="1" Text="{Binding DatabasePath, Mode=OneWay}" IsReadOnly="True" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Sync interval" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="1000 ms" />
+                            <TextBlock Text="Flask API URL" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Sensor save interval" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -142,7 +150,7 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Pressure warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="3.0 bar" />
+                            <TextBox Grid.Column="1" Text="{Binding PressureWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -150,7 +158,7 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Temperature warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="40 C" />
+                            <TextBox Grid.Column="1" Text="{Binding TemperatureWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -158,7 +166,15 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Vibration warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="0.20 g" />
+                            <TextBox Grid.Column="1" Text="{Binding VibrationWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="190" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Humidity warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="{Binding HumidityWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
@@ -166,7 +182,12 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Auto shutdown condition" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="2 warnings / 60 sec" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBox Width="58" Text="{Binding AutoShutdownWarningLimit, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text=" / " VerticalAlignment="Center" Style="{StaticResource CaptionText}" />
+                                <TextBox Width="58" Text="{Binding RiskWindowSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Text=" sec" VerticalAlignment="Center" Style="{StaticResource CaptionText}" />
+                            </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -218,16 +239,16 @@
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Sensor save rate" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="1 sec" />
+                            <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="SAVE" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
-                        <Button Content="RESET" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
-                        <Button Content="TEST" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        <Button Content="SAVE" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
+                        <Button Content="RESET" Command="{Binding ResetCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        <Button Content="TEST" Command="{Binding TestCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
                     </StackPanel>
                 </Border>
             </StackPanel>

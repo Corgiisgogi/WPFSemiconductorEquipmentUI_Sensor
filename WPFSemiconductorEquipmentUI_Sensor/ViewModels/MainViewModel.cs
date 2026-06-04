@@ -19,22 +19,25 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             databaseService.Initialize();
             var activityLogRepository = new ActivityLogRepository(databaseService);
             var sensorSnapshotRepository = new SensorSnapshotRepository(databaseService);
+            var appSettingsRepository = new AppSettingsRepository(databaseService);
+            var appSettingsStore = new AppSettingsStore(appSettingsRepository);
+            var authService = new FlaskAuthService(appSettingsStore);
             var activityLogStore = new ActivityLogStore(activityLogRepository);
-            var auth = new LoginViewModel(Session);
-            var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository);
+            var auth = new LoginViewModel(Session, authService);
+            var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository, appSettingsStore);
             var logs = new LogsViewModel(activityLogStore);
-            var settings = new SettingsViewModel();
+            var settings = new SettingsViewModel(appSettingsStore, databaseService);
 
             NavigationItems = new ObservableCollection<NavigationItem>
             {
-                new NavigationItem { Title = "Auth", ViewModel = auth },
-                new NavigationItem { Title = "Console", ViewModel = console, IsSelected = true },
+                new NavigationItem { Title = "Auth", ViewModel = auth, IsSelected = true },
+                new NavigationItem { Title = "Console", ViewModel = console },
                 new NavigationItem { Title = "Logs", ViewModel = logs },
                 new NavigationItem { Title = "Settings", ViewModel = settings }
             };
 
             PendingViewModel = new PendingViewModel();
-            CurrentViewModel = console;
+            CurrentViewModel = auth;
             NavigateCommand = new RelayCommand(Navigate);
         }
 

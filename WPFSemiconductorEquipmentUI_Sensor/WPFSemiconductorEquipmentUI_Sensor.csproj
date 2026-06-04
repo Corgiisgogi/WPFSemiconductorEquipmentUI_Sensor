@@ -37,6 +37,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Data.SQLite, Version=1.0.119.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.119.0\lib\net46\System.Data.SQLite.dll</HintPath>
       <Private>True</Private>
@@ -126,10 +127,17 @@
     <Compile Include="Models\NavigationItem.cs" />
     <Compile Include="Models\SensorMetric.cs" />
     <Compile Include="Models\SensorSnapshotRecord.cs" />
+    <Compile Include="Models\RegisterResult.cs" />
+    <Compile Include="Models\AuthResult.cs" />
+    <Compile Include="Models\UserAccount.cs" />
     <Compile Include="Services\ActivityLogStore.cs" />
     <Compile Include="Services\SensorSnapshotRepository.cs" />
+    <Compile Include="Services\FlaskAuthService.cs" />
+    <Compile Include="Services\IAuthService.cs" />
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\ActivityLogRepository.cs" />
+    <Compile Include="Services\AppSettingsStore.cs" />
+    <Compile Include="Services\AppSettingsRepository.cs" />
     <Compile Include="Services\AdsSensorTrainerClient.cs" />
     <Compile Include="Services\ITrainerClient.cs" />
     <Compile Include="Services\SensorTrainerSnapshot.cs" />

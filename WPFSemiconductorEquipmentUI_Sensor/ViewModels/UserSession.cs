@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using WPFSemiconductorEquipmentUI_Sensor.Models;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
@@ -14,7 +15,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         public UserSession()
         {
-            LoginAsOperator("operator01");
+            Logout();
         }
 
         public string UserId
@@ -53,6 +54,46 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             private set { SetProperty(ref _isAdmin, value); }
         }
 
+        public void ApplyAuthResult(AuthResult result)
+        {
+            if (result == null)
+            {
+                SetBlocked("guest", "Signed out", "LOCKED", "Danger");
+                return;
+            }
+
+            var status = string.IsNullOrWhiteSpace(result.ApprovalStatus) ? (result.Success ? "Approved" : "Pending") : result.ApprovalStatus.Trim();
+            var role = string.IsNullOrWhiteSpace(result.Role) ? "Operator" : result.Role.Trim();
+            var userId = string.IsNullOrWhiteSpace(result.UserId) ? "guest" : result.UserId.Trim();
+
+            if (IsApprovedStatus(status) && result.Success)
+            {
+                UserId = userId;
+                RoleText = role;
+                UserStateText = "APPROVED";
+                UserStateTone = "Normal";
+                IsApproved = true;
+                IsAdmin = string.Equals(role, "Admin", System.StringComparison.OrdinalIgnoreCase);
+                CommandManager.InvalidateRequerySuggested();
+                return;
+            }
+
+            SetBlocked(userId, role, status.ToUpperInvariant(), StatusTone(status));
+        }
+
+        public void ApplyRegisterResult(RegisterResult result)
+        {
+            if (result == null)
+            {
+                SetBlocked("guest", "Signed out", "LOCKED", "Danger");
+                return;
+            }
+
+            var userId = string.IsNullOrWhiteSpace(result.UserId) ? "guest" : result.UserId.Trim();
+            var status = string.IsNullOrWhiteSpace(result.ApprovalStatus) ? "Pending" : result.ApprovalStatus.Trim();
+            SetBlocked(userId, "Pending approval", status.ToUpperInvariant(), StatusTone(status));
+        }
+
         public void LoginAsOperator(string userId)
         {
             UserId = string.IsNullOrWhiteSpace(userId) ? "operator01" : userId.Trim();
@@ -84,6 +125,32 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             IsApproved = false;
             IsAdmin = false;
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void SetBlocked(string userId, string role, string state, string tone)
+        {
+            UserId = string.IsNullOrWhiteSpace(userId) ? "guest" : userId;
+            RoleText = string.IsNullOrWhiteSpace(role) ? "Signed out" : role;
+            UserStateText = string.IsNullOrWhiteSpace(state) ? "LOCKED" : state;
+            UserStateTone = string.IsNullOrWhiteSpace(tone) ? "Danger" : tone;
+            IsApproved = false;
+            IsAdmin = false;
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private static bool IsApprovedStatus(string status)
+        {
+            return string.Equals(status, "Approved", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string StatusTone(string status)
+        {
+            if (string.Equals(status, "Pending", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "Warning";
+            }
+
+            return "Danger";
         }
 
         private void SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
