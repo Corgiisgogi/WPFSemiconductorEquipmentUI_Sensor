@@ -17,9 +17,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private const double VibrationWarningThreshold = 7d;
         private const int RiskWindowSeconds = 60;
         private const int AutoShutdownWarningLimit = 2;
+        private const int SensorSnapshotSaveIntervalSeconds = 1;
 
         private readonly ITrainerClient _trainerClient;
         private readonly ActivityLogStore _activityLogStore;
+        private readonly SensorSnapshotRepository _sensorSnapshotRepository;
         private readonly DispatcherTimer _pollingTimer;
         private readonly UserSession _session;
         private bool _disposed;
@@ -36,6 +38,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private short _lastVibrationRaw;
         private short _lastTemperatureRaw;
         private short _lastHumidityRaw;
+        private DateTime _lastSensorSnapshotSavedAt;
         private DateTime _riskWindowStartedAt;
         private int _riskWarningCount;
         private bool _wasRiskWarningActive;
@@ -66,34 +69,40 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _inductiveSensorTone;
 
         public ConsoleViewModel()
-            : this(new UserSession(), new ActivityLogStore(), new AdsSensorTrainerClient())
+            : this(new UserSession(), new ActivityLogStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session)
-            : this(session, new ActivityLogStore(), new AdsSensorTrainerClient())
+            : this(session, new ActivityLogStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore)
-            : this(session, activityLogStore, new AdsSensorTrainerClient())
+            : this(session, activityLogStore, null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(ITrainerClient trainerClient)
-            : this(new UserSession(), new ActivityLogStore(), trainerClient)
+            : this(new UserSession(), new ActivityLogStore(), null, trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ITrainerClient trainerClient)
-            : this(session, new ActivityLogStore(), trainerClient)
+            : this(session, new ActivityLogStore(), null, trainerClient)
         {
         }
 
-        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, ITrainerClient trainerClient)
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository)
+            : this(session, activityLogStore, sensorSnapshotRepository, new AdsSensorTrainerClient())
+        {
+        }
+
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, ITrainerClient trainerClient)
         {
             _session = session;
             _activityLogStore = activityLogStore;
+            _sensorSnapshotRepository = sensorSnapshotRepository;
             _trainerClient = trainerClient;
             _riskWindowStartedAt = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
@@ -484,7 +493,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
-            UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
 
             SetDigitalInputs(
                 snapshot.DigitalInput1,
@@ -495,6 +504,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
             EvaluateRiskRules(pressure, vibration, temperature);
+            TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
             ConnectionStatusText = "ADS READ OK";
             ConnectionStatusTone = "Normal";
@@ -522,7 +532,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
-            UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
             SetSensorStale(Sensors[0]);
             SetSensorStale(Sensors[1]);
             SetSensorStale(Sensors[2]);
@@ -537,6 +547,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
             EvaluateRiskRules(pressure, vibration, temperature);
+            TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
             ConnectionStatusText = "STALE";
             ConnectionStatusTone = "Warning";
@@ -549,6 +560,55 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 SummaryBadgeText = "STALE";
                 SummaryTone = "Warning";
                 SummaryText = "PLC raw sensor values have not changed for about 3 seconds. ADS is readable, but sensor input updates appear stopped.";
+            }
+        }
+
+
+        private void TrySaveSensorSnapshot(
+            SensorTrainerSnapshot snapshot,
+            double pressure,
+            double vibration,
+            double temperature,
+            double humidity)
+        {
+            if (_sensorSnapshotRepository == null)
+            {
+                return;
+            }
+
+            var now = DateTime.Now;
+            if (_lastSensorSnapshotSavedAt != DateTime.MinValue
+                && (now - _lastSensorSnapshotSavedAt).TotalSeconds < SensorSnapshotSaveIntervalSeconds)
+            {
+                return;
+            }
+
+            try
+            {
+                _sensorSnapshotRepository.Insert(new SensorSnapshotRecord
+                {
+                    CapturedAt = snapshot.ReceivedAt,
+                    PressureRaw = snapshot.Pressure,
+                    PressureValue = pressure,
+                    VibrationRaw = snapshot.Vibration,
+                    VibrationValue = vibration,
+                    TemperatureRaw = snapshot.Temperature,
+                    TemperatureValue = temperature,
+                    HumidityRaw = snapshot.Humidity,
+                    HumidityValue = humidity,
+                    DigitalInput1 = snapshot.DigitalInput1,
+                    DigitalInput2 = snapshot.DigitalInput2,
+                    DigitalInput3 = snapshot.DigitalInput3,
+                    DigitalInput4 = snapshot.DigitalInput4,
+                    OpticalSensor = snapshot.OpticalSensor,
+                    InductiveSensor = snapshot.InductiveSensor
+                });
+                _lastSensorSnapshotSavedAt = now;
+            }
+            catch (Exception ex)
+            {
+                AddActivityLog("Storage", "Sensor snapshot save failed: " + ex.Message, "WARN");
+                _lastSensorSnapshotSavedAt = now;
             }
         }
 

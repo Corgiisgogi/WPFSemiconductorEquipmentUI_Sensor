@@ -15,9 +15,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             Session = new UserSession();
 
-            var activityLogStore = new ActivityLogStore();
+            var databaseService = new DatabaseService();
+            databaseService.Initialize();
+            var activityLogRepository = new ActivityLogRepository(databaseService);
+            var sensorSnapshotRepository = new SensorSnapshotRepository(databaseService);
+            var activityLogStore = new ActivityLogStore(activityLogRepository);
             var auth = new LoginViewModel(Session);
-            var console = new ConsoleViewModel(Session, activityLogStore);
+            var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository);
             var logs = new LogsViewModel(activityLogStore);
             var settings = new SettingsViewModel();
 
