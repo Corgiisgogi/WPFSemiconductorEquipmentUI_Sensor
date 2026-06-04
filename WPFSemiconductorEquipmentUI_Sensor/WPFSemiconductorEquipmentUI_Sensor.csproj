@@ -46,6 +46,11 @@
     <Reference Include="System.Xaml">
       <RequiredTargetFramework>4.0</RequiredTargetFramework>
     </Reference>
+    <Reference Include="TwinCAT.Ads, Version=2.2.56.0, Culture=neutral, PublicKeyToken=180016cd49e5e8c3, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Lib\TwinCAT.Ads.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -116,6 +121,9 @@
     <Compile Include="Models\ActivityLogItem.cs" />
     <Compile Include="Models\NavigationItem.cs" />
     <Compile Include="Models\SensorMetric.cs" />
+    <Compile Include="Services\AdsSensorTrainerClient.cs" />
+    <Compile Include="Services\ITrainerClient.cs" />
+    <Compile Include="Services\SensorTrainerSnapshot.cs" />
     <Compile Include="ViewModels\ConsoleViewModel.cs" />
     <Compile Include="ViewModels\LoginViewModel.cs" />
     <Compile Include="ViewModels\LogsViewModel.cs" />
@@ -167,6 +175,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Lib\TwinCAT.Ads.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

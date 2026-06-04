@@ -1,12 +1,14 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using WPFSemiconductorEquipmentUI_Sensor.Models;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
-    public class MainViewModel : ViewModelBase
+    public class MainViewModel : ViewModelBase, IDisposable
     {
         private object _currentViewModel;
+        private bool _disposed;
 
         public MainViewModel()
         {
@@ -58,6 +60,25 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             item.IsSelected = true;
             CurrentViewModel = item.ViewModel;
             OnPropertyChanged("NavigationItems");
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            foreach (var item in NavigationItems)
+            {
+                var disposable = item.ViewModel as IDisposable;
+                if (disposable != null)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            _disposed = true;
         }
     }
 }
