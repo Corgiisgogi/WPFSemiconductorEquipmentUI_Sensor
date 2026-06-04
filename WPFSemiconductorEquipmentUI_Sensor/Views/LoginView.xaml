@@ -51,10 +51,16 @@
 
             <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="28">
                 <StackPanel>
-                    <TextBlock Text="Operator Access" FontSize="24" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}" />
-                    <TextBlock Text="Control actions are available only after the account is approved."
-                               Margin="0,12,0,0"
-                               Style="{StaticResource BodyText}" />
+                    <DockPanel>
+                        <StackPanel>
+                            <TextBlock Text="Operator Access" FontSize="24" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}" />
+                            <TextBlock Text="Login and sign up are separated to prevent account flow mistakes."
+                                       Margin="0,12,0,0"
+                                       Style="{StaticResource BodyText}" />
+                        </StackPanel>
+                        <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding AuthStatusText}" Tone="{Binding AuthStatusTone}" />
+                    </DockPanel>
+
                     <DockPanel Margin="0,18,0,0">
                         <TextBlock Text="Current session" Style="{StaticResource BodyStrongText}" />
                         <controls:StatusBadge DockPanel.Dock="Right"
@@ -71,30 +77,78 @@
                                               Width="112"
                                               HorizontalAlignment="Right" />
                     </DockPanel>
-                    <TextBlock Text="User ID" Margin="0,18,0,6" Style="{StaticResource CaptionText}" />
-                    <TextBox Text="{Binding LoginUserId, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="Display name" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
-                    <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="Password" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
-                    <PasswordBox x:Name="PasswordInput" PasswordChanged="OnPasswordChanged" Height="40" Padding="12,0" VerticalContentAlignment="Center" />
-                    <WrapPanel Margin="0,18,0,0">
-                        <Button Content="LOGIN" Command="{Binding LoginCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" Margin="0,0,12,10" />
-                        <Button Content="SIGN UP" Command="{Binding RegisterCommand}" Style="{StaticResource SecondaryButtonStyle}" Width="132" Margin="0,0,12,10" />
-                        <Button Content="CHECK STATUS" Command="{Binding CheckStatusCommand}" Style="{StaticResource CompactButtonStyle}" Width="132" Margin="0,0,12,10" />
-                        <Button Content="LOGOUT" Command="{Binding LogoutCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="0,0,0,10" />
-                    </WrapPanel>
+
+                    <Border Margin="0,18,0,0" Padding="6" CornerRadius="8" Background="{StaticResource BrushSurfaceSubtle}">
+                        <UniformGrid Columns="2">
+                            <Button Content="LOGIN"
+                                    Command="{Binding ShowLoginCommand}"
+                                    Style="{StaticResource CompactButtonStyle}"
+                                    Margin="0,0,6,0" />
+                            <Button Content="SIGN UP"
+                                    Command="{Binding ShowSignUpCommand}"
+                                    Style="{StaticResource CompactButtonStyle}"
+                                    Margin="6,0,0,0" />
+                        </UniformGrid>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <controls:StatusBadge Text="LOGIN MODE" Tone="{Binding LoginModeTone}" Margin="0,0,8,0" />
+                        <controls:StatusBadge Text="SIGN UP MODE" Tone="{Binding SignUpModeTone}" />
+                    </StackPanel>
+
+                    <StackPanel Margin="0,18,0,0" Visibility="{Binding LoginPanelVisibility}">
+                        <TextBlock Text="Operator Login" Style="{StaticResource SectionTitleText}" />
+                        <TextBlock Text="Use an approved account to unlock equipment controls. Pending or rejected accounts stay locked."
+                                   Margin="0,8,0,0"
+                                   Style="{StaticResource BodyText}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="User ID" Margin="0,18,0,6" Style="{StaticResource CaptionText}" />
+                        <TextBox Text="{Binding LoginUserId, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Password" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
+                        <PasswordBox x:Name="LoginPasswordInput" PasswordChanged="OnLoginPasswordChanged" Height="40" Padding="12,0" VerticalContentAlignment="Center" />
+                        <WrapPanel Margin="0,18,0,0">
+                            <Button Content="LOGIN" Command="{Binding LoginCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" Margin="0,0,12,10" />
+                            <Button Content="CHECK STATUS" Command="{Binding CheckStatusCommand}" Style="{StaticResource CompactButtonStyle}" Width="132" Margin="0,0,12,10" />
+                            <Button Content="LOGOUT" Command="{Binding LogoutCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="0,0,0,10" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel Margin="0,18,0,0" Visibility="{Binding SignUpPanelVisibility}">
+                        <TextBlock Text="Create Account Request" Style="{StaticResource SectionTitleText}" />
+                        <TextBlock Text="Submit a new account request. The account cannot control equipment until the web admin approves it."
+                                   Margin="0,8,0,0"
+                                   Style="{StaticResource BodyText}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="User ID" Margin="0,18,0,6" Style="{StaticResource CaptionText}" />
+                        <TextBox Text="{Binding RegisterUserId, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Display name" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
+                        <TextBox Text="{Binding RegisterDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="Password" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
+                        <PasswordBox x:Name="RegisterPasswordInput" PasswordChanged="OnRegisterPasswordChanged" Height="40" Padding="12,0" VerticalContentAlignment="Center" />
+                        <TextBlock Text="Confirm password" Margin="0,14,0,6" Style="{StaticResource CaptionText}" />
+                        <PasswordBox x:Name="RegisterConfirmPasswordInput" PasswordChanged="OnRegisterConfirmPasswordChanged" Height="40" Padding="12,0" VerticalContentAlignment="Center" />
+                        <WrapPanel Margin="0,18,0,0">
+                            <Button Content="SUBMIT SIGN UP" Command="{Binding RegisterCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="170" Margin="0,0,12,10" />
+                            <Button Content="CHECK STATUS" Command="{Binding CheckStatusCommand}" Style="{StaticResource CompactButtonStyle}" Width="132" Margin="0,0,12,10" />
+                            <Button Content="BACK TO LOGIN" Command="{Binding ShowLoginCommand}" Style="{StaticResource CompactButtonStyle}" Width="132" Margin="0,0,0,10" />
+                        </WrapPanel>
+                    </StackPanel>
+
                     <Border Margin="0,18,0,0" Padding="16" CornerRadius="8" Background="{StaticResource BrushWarningSoft}" BorderBrush="#E7C26A" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="Pending approval" Foreground="{StaticResource BrushWarning}" FontWeight="SemiBold" />
-                            <TextBlock Text="New accounts stay locked until an administrator approves the request."
+                            <DockPanel>
+                                <TextBlock Text="Auth result" Foreground="{StaticResource BrushWarning}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding AuthStatusText}" Tone="{Binding AuthStatusTone}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding AuthMessage}"
                                        Margin="0,8,0,0"
-                                       Style="{StaticResource BodyText}" />
+                                       Style="{StaticResource BodyText}"
+                                       TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                        <controls:StatusBadge Text="1. Pending" Tone="Warning" Margin="0,0,8,0" />
-                        <controls:StatusBadge Text="2. Approved" Tone="Normal" Margin="0,0,8,0" />
-                        <controls:StatusBadge Text="3. Active" Tone="Normal" />
+                        <controls:StatusBadge Text="1. Sign up" Tone="Warning" Margin="0,0,8,0" />
+                        <controls:StatusBadge Text="2. Web approval" Tone="Blue" Margin="0,0,8,0" />
+                        <controls:StatusBadge Text="3. Login" Tone="Normal" />
                     </StackPanel>
                 </StackPanel>
             </Border>
