@@ -1,5 +1,5 @@
-using System.Collections.ObjectModel;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -17,8 +17,14 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private const int ProcessStopOutputBit = 2;
         private const int AiControlStartOutputBit = 3;
         private const int AiControlStopOutputBit = 4;
+        private const double PressureWarningThreshold = 0.80d;
+        private const double TemperatureWarningThreshold = 40d;
+        private const double VibrationWarningThreshold = 7d;
+        private const int RiskWindowSeconds = 60;
+        private const int AutoShutdownWarningLimit = 2;
 
         private readonly ITrainerClient _trainerClient;
+        private readonly ActivityLogStore _activityLogStore;
         private readonly DispatcherTimer _pollingTimer;
         private readonly UserSession _session;
         private bool _disposed;
@@ -35,6 +41,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private short _lastVibrationRaw;
         private short _lastTemperatureRaw;
         private short _lastHumidityRaw;
+        private DateTime _riskWindowStartedAt;
+        private int _riskWarningCount;
+        private bool _wasRiskWarningActive;
+        private bool _autoShutdownIssued;
+        private bool _forceShutdownAllowedByRisk;
         private string _connectionStatusText;
         private string _connectionStatusTone;
         private string _lastUpdateText;
@@ -43,6 +54,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _summaryBadgeText;
         private string _summaryTone;
         private string _summaryText;
+        private string _riskStatusText;
+        private string _riskStatusTone;
+        private string _riskDetailText;
         private string _digitalInput1Text;
         private string _digitalInput1Tone;
         private string _digitalInput2Text;
@@ -57,24 +71,36 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _inductiveSensorTone;
 
         public ConsoleViewModel()
-            : this(new UserSession(), new AdsSensorTrainerClient())
+            : this(new UserSession(), new ActivityLogStore(), new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session)
-            : this(session, new AdsSensorTrainerClient())
+            : this(session, new ActivityLogStore(), new AdsSensorTrainerClient())
+        {
+        }
+
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore)
+            : this(session, activityLogStore, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(ITrainerClient trainerClient)
-            : this(new UserSession(), trainerClient)
+            : this(new UserSession(), new ActivityLogStore(), trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ITrainerClient trainerClient)
+            : this(session, new ActivityLogStore(), trainerClient)
+        {
+        }
+
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, ITrainerClient trainerClient)
         {
             _session = session;
+            _activityLogStore = activityLogStore;
             _trainerClient = trainerClient;
+            _riskWindowStartedAt = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
 
             Title = "WPF Equipment Control Console";
@@ -88,7 +114,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 new SensorMetric { Name = "Humidity", Value = "--", Unit = "%", RangeText = "Raw: --", BadgeText = "WAIT", Tone = "Disabled", IndicatorWidth = 0 }
             };
 
-            ActivityLogs = SampleData.CreateLogs();
+            ActivityLogs = _activityLogStore.Logs;
 
             ConnectionStatusText = "DISCONNECTED";
             ConnectionStatusTone = "Disabled";
@@ -98,11 +124,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SummaryBadgeText = "WAITING";
             SummaryTone = "Disabled";
             SummaryText = "Waiting for TwinCAT ADS connection. Last known sensor values will remain visible if reads fail.";
+            RiskStatusText = "AI READY";
+            RiskStatusTone = "Normal";
+            RiskDetailText = "압력, 진동, 온도 기준으로 위험 조건을 감시합니다.";
             SetDigitalInputs(false, false, false, false, false, false);
             ProcessStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStartOutputBit, "DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
             ProcessStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(ProcessStopOutputBit, "DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
             AiControlStartCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStartOutputBit, "DI3 AI Control Start", true), parameter => CanExecuteAdminCommand());
             AiControlStopCommand = new RelayCommand(parameter => ExecuteDigitalOutputCommand(AiControlStopOutputBit, "DI4 AI Control Stop", true), parameter => CanExecuteAdminCommand());
+            ForceShutdownCommand = new RelayCommand(parameter => ExecuteForceShutdown(false), parameter => CanExecuteForceShutdown());
 
             _pollingTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
@@ -123,6 +153,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public ICommand ProcessStopCommand { get; private set; }
         public ICommand AiControlStartCommand { get; private set; }
         public ICommand AiControlStopCommand { get; private set; }
+        public ICommand ForceShutdownCommand { get; private set; }
 
         public string AiControlAccessText
         {
@@ -132,6 +163,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public string AiControlAccessTone
         {
             get { return _session.IsAdmin ? "Normal" : "Danger"; }
+        }
+
+        public string ForceShutdownAccessText
+        {
+            get { return _session.IsAdmin ? "ADMIN ENABLED" : (_forceShutdownAllowedByRisk ? "RISK ENABLED" : "ADMIN ONLY"); }
+        }
+
+        public string ForceShutdownAccessTone
+        {
+            get { return _session.IsAdmin ? "Danger" : (_forceShutdownAllowedByRisk ? "Warning" : "Disabled"); }
         }
 
         public string ConnectionStatusText
@@ -180,6 +221,24 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             get { return _summaryText; }
             private set { SetProperty(ref _summaryText, value); }
+        }
+
+        public string RiskStatusText
+        {
+            get { return _riskStatusText; }
+            private set { SetProperty(ref _riskStatusText, value); }
+        }
+
+        public string RiskStatusTone
+        {
+            get { return _riskStatusTone; }
+            private set { SetProperty(ref _riskStatusTone, value); }
+        }
+
+        public string RiskDetailText
+        {
+            get { return _riskDetailText; }
+            private set { SetProperty(ref _riskDetailText, value); }
         }
 
         public string DigitalInput1Text
@@ -286,6 +345,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 OnPropertyChanged("AiControlAccessText");
                 OnPropertyChanged("AiControlAccessTone");
+                OnPropertyChanged("ForceShutdownAccessText");
+                OnPropertyChanged("ForceShutdownAccessTone");
                 CommandManager.InvalidateRequerySuggested();
             }
         }
@@ -298,6 +359,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private bool CanExecuteAdminCommand()
         {
             return !_disposed && _session.IsAdmin;
+        }
+
+        private bool CanExecuteForceShutdown()
+        {
+            return !_disposed && (_session.IsAdmin || _forceShutdownAllowedByRisk);
         }
 
         private void ExecuteDigitalOutputCommand(int outputBit, string commandName, bool adminOnly)
@@ -331,17 +397,40 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
         }
 
+        private void ExecuteForceShutdown(bool automatic)
+        {
+            if (!automatic && !_session.IsAdmin && !_forceShutdownAllowedByRisk)
+            {
+                AddActivityLog("Control", "Force Shutdown blocked - admin or AI risk condition required", "RISK");
+                return;
+            }
+
+            if (!automatic && !_session.IsApproved)
+            {
+                AddActivityLog("Control", "Force Shutdown blocked - approved login required", "RISK");
+                return;
+            }
+
+            try
+            {
+                _trainerClient.PulseDigitalOutput(ProcessStopOutputBit, CommandPulseMilliseconds);
+                AddActivityLog(automatic ? "AI Rule" : "Control", automatic ? "Auto Force Shutdown command sent" : "Force Shutdown command sent", "RISK");
+                SummaryBadgeText = automatic ? "AUTO STOP" : "FORCE STOP";
+                SummaryTone = "Danger";
+                SummaryText = "Force Shutdown pulsed GVL.NX_OD5121 stop bit " + ProcessStopOutputBit + " for " + CommandPulseMilliseconds + " ms.";
+            }
+            catch (Exception ex)
+            {
+                AddActivityLog(automatic ? "AI Rule" : "Control", "Force Shutdown failed: " + ex.Message, "RISK");
+                SummaryBadgeText = "STOP ERROR";
+                SummaryTone = "Danger";
+                SummaryText = "Force Shutdown could not be sent. " + ex.Message;
+            }
+        }
+
         private void AddActivityLog(string source, string eventText, string severity)
         {
-            ActivityLogs.Insert(0, new ActivityLogItem
-            {
-                Time = DateTime.Now.ToString("HH:mm:ss"),
-                Source = source,
-                User = _session.UserId,
-                Event = eventText,
-                Severity = severity,
-                Saved = "NO"
-            });
+            _activityLogStore.Add(source, _session.UserId, eventText, severity);
         }
 
         private void OnPollingTimerTick(object sender, EventArgs e)
@@ -419,9 +508,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
-            UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
-            UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
+            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
+            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
 
             SetDigitalInputs(
@@ -432,15 +521,20 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
+            EvaluateRiskRules(pressure, vibration, temperature);
 
             ConnectionStatusText = "ADS READ OK";
             ConnectionStatusTone = "Normal";
             LastUpdateText = "READ #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
             EtherCatStatusText = "READY";
             EtherCatStatusTone = "Normal";
-            SummaryBadgeText = "PLC LINK";
-            SummaryTone = "Normal";
-            SummaryText = "TwinCAT ADS is readable. Sensor power state is not verified; displayed values are the latest PLC raw inputs from GVL.NX_AD4203.";
+
+            if (SummaryTone != "Danger")
+            {
+                SummaryBadgeText = "PLC LINK";
+                SummaryTone = "Normal";
+                SummaryText = "TwinCAT ADS is readable. Sensor values are monitored by AI risk rules.";
+            }
         }
 
         private void ApplyStaleSnapshot(SensorTrainerSnapshot snapshot)
@@ -452,9 +546,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
-            UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
-            UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
+            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
+            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
             SetSensorStale(Sensors[0]);
             SetSensorStale(Sensors[1]);
@@ -469,15 +563,20 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
+            EvaluateRiskRules(pressure, vibration, temperature);
 
             ConnectionStatusText = "STALE";
             ConnectionStatusTone = "Warning";
             LastUpdateText = "READ #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
             EtherCatStatusText = "STALE";
             EtherCatStatusTone = "Warning";
-            SummaryBadgeText = "STALE";
-            SummaryTone = "Warning";
-            SummaryText = "PLC raw sensor values have not changed for about 3 seconds. ADS is readable, but sensor input updates appear stopped.";
+
+            if (SummaryTone != "Danger")
+            {
+                SummaryBadgeText = "STALE";
+                SummaryTone = "Warning";
+                SummaryText = "PLC raw sensor values have not changed for about 3 seconds. ADS is readable, but sensor input updates appear stopped.";
+            }
         }
 
         private void ApplyReadFailure(Exception ex)
@@ -487,13 +586,97 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
+            _forceShutdownAllowedByRisk = false;
+            NotifyForceShutdownStateChanged();
             ConnectionStatusText = "READ ERROR";
             ConnectionStatusTone = "Danger";
             EtherCatStatusText = "DISCONNECTED";
             EtherCatStatusTone = "Danger";
+            RiskStatusText = "AI PAUSED";
+            RiskStatusTone = "Disabled";
+            RiskDetailText = "ADS read failed. Risk rule waits for the next valid sensor snapshot.";
             SummaryBadgeText = "READ ERROR";
             SummaryTone = "Danger";
             SummaryText = "Unable to read TwinCAT ADS data. Check TwinCAT runtime, ADS route, port 851, and GVL.NX_* variables. " + ex.Message;
+        }
+
+        private void EvaluateRiskRules(double pressure, double vibration, double temperature)
+        {
+            var warningCount = 0;
+            var details = string.Empty;
+
+            if (pressure >= PressureWarningThreshold)
+            {
+                warningCount++;
+                details = AppendRiskDetail(details, "Pressure " + pressure.ToString("0.00") + " bar");
+                SetSensorWarning(Sensors[0]);
+            }
+
+            if (vibration >= VibrationWarningThreshold)
+            {
+                warningCount++;
+                details = AppendRiskDetail(details, "Vibration " + vibration.ToString("0.0"));
+                SetSensorWarning(Sensors[1]);
+            }
+
+            if (temperature >= TemperatureWarningThreshold)
+            {
+                warningCount++;
+                details = AppendRiskDetail(details, "Temperature " + temperature.ToString("0.0") + " C");
+                SetSensorWarning(Sensors[2]);
+            }
+
+            if (warningCount == 0)
+            {
+                _riskWarningCount = 0;
+                _riskWindowStartedAt = DateTime.MinValue;
+                _wasRiskWarningActive = false;
+                _autoShutdownIssued = false;
+                _forceShutdownAllowedByRisk = false;
+                RiskStatusText = "AI NORMAL";
+                RiskStatusTone = "Normal";
+                RiskDetailText = "No risk threshold is exceeded.";
+                NotifyForceShutdownStateChanged();
+                return;
+            }
+
+            var now = DateTime.Now;
+            if (_riskWindowStartedAt == DateTime.MinValue || (now - _riskWindowStartedAt).TotalSeconds > RiskWindowSeconds)
+            {
+                _riskWindowStartedAt = now;
+                _riskWarningCount = 0;
+            }
+
+            if (!_wasRiskWarningActive)
+            {
+                _riskWarningCount += warningCount;
+                AddActivityLog("AI Rule", details + " exceeded. Risk count " + _riskWarningCount + "/" + AutoShutdownWarningLimit + " within " + RiskWindowSeconds + "s.", _riskWarningCount >= AutoShutdownWarningLimit ? "RISK" : "WARN");
+            }
+
+            _wasRiskWarningActive = true;
+            _forceShutdownAllowedByRisk = true;
+            RiskStatusText = _riskWarningCount >= AutoShutdownWarningLimit ? "AI RISK" : "AI WARNING";
+            RiskStatusTone = _riskWarningCount >= AutoShutdownWarningLimit ? "Danger" : "Warning";
+            RiskDetailText = details + " exceeded. Risk count " + _riskWarningCount + "/" + AutoShutdownWarningLimit + " within " + RiskWindowSeconds + "s.";
+            NotifyForceShutdownStateChanged();
+
+            if (_riskWarningCount >= AutoShutdownWarningLimit && !_autoShutdownIssued)
+            {
+                _autoShutdownIssued = true;
+                ExecuteForceShutdown(true);
+            }
+        }
+
+        private static string AppendRiskDetail(string current, string next)
+        {
+            return string.IsNullOrEmpty(current) ? next : current + ", " + next;
+        }
+
+        private void NotifyForceShutdownStateChanged()
+        {
+            OnPropertyChanged("ForceShutdownAccessText");
+            OnPropertyChanged("ForceShutdownAccessTone");
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void SetSensorStale(SensorMetric sensor)
@@ -502,7 +685,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             sensor.Tone = "Warning";
         }
 
-        private void UpdateSensor(
+        private void SetSensorWarning(SensorMetric sensor)
+        {
+            sensor.BadgeText = "WARN";
+            sensor.Tone = "Warning";
+        }
+
+        private double UpdateSensor(
             SensorMetric sensor,
             short rawValue,
             Func<short, double> calibration,
@@ -517,6 +706,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             sensor.BadgeText = "LIVE";
             sensor.Tone = "Normal";
             sensor.IndicatorWidth = CalculateIndicatorWidth(calibratedValue, minimum, maximum);
+            return calibratedValue;
         }
 
         private static double CalculateIndicatorWidth(double value, double minimum, double maximum)

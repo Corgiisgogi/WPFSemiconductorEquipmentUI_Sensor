@@ -11,7 +11,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <controls:StatusBadge Text="{Binding ConnectionStatusText}" Tone="{Binding ConnectionStatusTone}" Margin="0,0,8,0" />
                 <controls:StatusBadge Text="{Binding LastUpdateText}" Tone="Blue" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="AI WATCH" Tone="Warning" />
+                <controls:StatusBadge Text="{Binding RiskStatusText}" Tone="{Binding RiskStatusTone}" />
             </StackPanel>
         </DockPanel>
 
@@ -131,9 +131,12 @@
                     <Button Content="DI4 - AI 제어 정지" Command="{Binding AiControlStopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
                     <Border Margin="0,16,0,0" Padding="14" CornerRadius="8" Background="{StaticResource BrushDangerSoft}" BorderBrush="#F2B8B5" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="Emergency" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
-                            <Button Content="FORCE SHUTDOWN" Command="{Binding ProcessStopCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
-                            <TextBlock Text="Runs only for admin command or AI risk condition."
+                            <DockPanel>
+                                <TextBlock Text="Emergency" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ForceShutdownAccessText}" Tone="{Binding ForceShutdownAccessTone}" />
+                            </DockPanel>
+                            <Button Content="FORCE SHUTDOWN" Command="{Binding ForceShutdownCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
+                            <TextBlock Text="관리자 또는 AI 위험 조건에서만 실행됩니다."
                                        Margin="0,8,0,0"
                                        Style="{StaticResource CaptionText}" />
                         </StackPanel>
@@ -142,7 +145,11 @@
                     <TextBlock Text="AI Risk Rule: Detect / Warn / Stop" Style="{StaticResource BodyStrongText}" />
                     <Border Margin="0,14,0,0" Height="92" CornerRadius="6" Background="{StaticResource BrushSurfaceSubtle}" Padding="12">
                         <StackPanel>
-                            <TextBlock Text="Sensor Trend" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
+                            <DockPanel>
+                                <TextBlock Text="Sensor Risk" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding RiskStatusText}" Tone="{Binding RiskStatusTone}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding RiskDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
                             <Rectangle Height="2" Margin="0,8,0,0" Fill="{StaticResource BrushWarning}" />
                         </StackPanel>
                     </Border>

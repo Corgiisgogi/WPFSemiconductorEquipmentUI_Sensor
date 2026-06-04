@@ -121,6 +121,7 @@
     <Compile Include="Models\ActivityLogItem.cs" />
     <Compile Include="Models\NavigationItem.cs" />
     <Compile Include="Models\SensorMetric.cs" />
+    <Compile Include="Services\ActivityLogStore.cs" />
     <Compile Include="Services\AdsSensorTrainerClient.cs" />
     <Compile Include="Services\ITrainerClient.cs" />
     <Compile Include="Services\SensorTrainerSnapshot.cs" />

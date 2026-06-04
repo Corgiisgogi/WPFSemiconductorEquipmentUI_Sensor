@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using WPFSemiconductorEquipmentUI_Sensor.Models;
+using WPFSemiconductorEquipmentUI_Sensor.Services;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
@@ -14,9 +15,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             Session = new UserSession();
 
+            var activityLogStore = new ActivityLogStore();
             var auth = new LoginViewModel(Session);
-            var console = new ConsoleViewModel(Session);
-            var logs = new LogsViewModel();
+            var console = new ConsoleViewModel(Session, activityLogStore);
+            var logs = new LogsViewModel(activityLogStore);
             var settings = new SettingsViewModel();
 
             NavigationItems = new ObservableCollection<NavigationItem>
