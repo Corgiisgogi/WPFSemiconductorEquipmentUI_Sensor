@@ -24,7 +24,7 @@
                 Padding="16">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <controls:StatusBadge Text="NORMAL" Tone="Normal" Margin="0,0,14,0" />
-                <TextBlock Text="Equipment is operating normally. Pressure and temperature are being monitored."
+                <TextBlock Text="Equipment is operating normally. Pressure, vibration, and temperature are being monitored."
                            Style="{StaticResource BodyStrongText}" />
             </StackPanel>
         </Border>

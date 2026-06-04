@@ -132,7 +132,7 @@
                         <StackPanel>
                             <TextBlock Text="Sensor Snapshot" Style="{StaticResource BodyStrongText}" />
                             <DockPanel Margin="0,12,0,0"><TextBlock Text="Pressure" Style="{StaticResource CaptionText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="3.1 bar" Tone="Warning" /></DockPanel>
-                            <DockPanel Margin="0,10,0,0"><TextBlock Text="Distance" Style="{StaticResource CaptionText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="18 cm" Tone="Normal" /></DockPanel>
+                            <DockPanel Margin="0,10,0,0"><TextBlock Text="Vibration" Style="{StaticResource CaptionText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="0.12 g" Tone="Normal" /></DockPanel>
                             <DockPanel Margin="0,10,0,0"><TextBlock Text="Temperature" Style="{StaticResource CaptionText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="42 C" Tone="Warning" /></DockPanel>
                             <DockPanel Margin="0,10,0,0"><TextBlock Text="Humidity" Style="{StaticResource CaptionText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="41 %" Tone="Normal" /></DockPanel>
                         </StackPanel>

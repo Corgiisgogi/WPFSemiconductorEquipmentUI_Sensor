@@ -157,8 +157,8 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Humidity range" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="30 - 60 %" />
+                            <TextBlock Text="Vibration warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="0.20 g" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
