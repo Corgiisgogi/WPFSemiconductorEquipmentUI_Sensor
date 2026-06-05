@@ -99,19 +99,63 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             }
         }
 
-        private static string ReadErrorMessage(WebException ex)
+        private string ReadErrorMessage(WebException ex)
         {
             if (ex.Response == null)
             {
-                return "Flask API connection failed: " + ex.Message;
+                return "Flask API 서버에 연결할 수 없습니다. Settings의 Flask API URL과 서버 실행 상태를 확인하세요. (" + ex.Message + ")";
             }
 
+            var response = ex.Response as HttpWebResponse;
             using (var stream = ex.Response.GetResponseStream())
             using (var reader = new StreamReader(stream, Encoding.UTF8))
             {
                 var body = reader.ReadToEnd();
-                return string.IsNullOrWhiteSpace(body) ? "Flask API request failed: " + ex.Message : body;
+                var message = ExtractJsonMessage(body);
+                if (!string.IsNullOrWhiteSpace(message))
+                {
+                    return message;
+                }
+
+                if (string.IsNullOrWhiteSpace(body))
+                {
+                    return response == null
+                        ? "Flask API 요청에 실패했습니다."
+                        : "Flask API 요청에 실패했습니다. HTTP " + (int)response.StatusCode + " " + response.StatusDescription;
+                }
+
+                return "Flask API 요청에 실패했습니다. 서버 응답을 확인하세요.";
             }
+        }
+
+        private string ExtractJsonMessage(string body)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                return null;
+            }
+
+            try
+            {
+                var payload = _serializer.Deserialize<AuthErrorResponse>(body);
+                if (payload != null && !string.IsNullOrWhiteSpace(payload.message))
+                {
+                    return payload.message;
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        private sealed class AuthErrorResponse
+        {
+            public bool success { get; set; }
+            public string message { get; set; }
+            public string approvalStatus { get; set; }
+            public string userId { get; set; }
         }
     }
 }

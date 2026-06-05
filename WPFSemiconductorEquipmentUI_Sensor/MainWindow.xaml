@@ -87,6 +87,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Style="{StaticResource NavigationButtonStyle}"
+                                        Visibility="{Binding Visibility}"
                                         Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                         CommandParameter="{Binding}"
                                         Margin="0,0,0,8">
