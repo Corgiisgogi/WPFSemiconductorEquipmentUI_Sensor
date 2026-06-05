@@ -42,6 +42,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             return Get<AuthResult>("/api/users/" + Uri.EscapeDataString(userId) + "/status");
         }
 
+        public bool CheckHealth()
+        {
+            var request = CreateRequest("/api/health", "GET");
+            using (var response = (HttpWebResponse)request.GetResponse())
+            {
+                return response.StatusCode == HttpStatusCode.OK;
+            }
+        }
+
         private T Get<T>(string path)
         {
             var request = CreateRequest(path, "GET");

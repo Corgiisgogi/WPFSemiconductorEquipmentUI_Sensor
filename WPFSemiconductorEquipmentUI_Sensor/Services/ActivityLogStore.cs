@@ -9,15 +9,22 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
     {
         private const int RecentLogLimit = 300;
         private readonly ActivityLogRepository _activityLogRepository;
+        private readonly IRemoteTelemetryService _remoteTelemetryService;
 
         public ActivityLogStore()
-            : this(null)
+            : this(null, null)
         {
         }
 
         public ActivityLogStore(ActivityLogRepository activityLogRepository)
+            : this(activityLogRepository, null)
+        {
+        }
+
+        public ActivityLogStore(ActivityLogRepository activityLogRepository, IRemoteTelemetryService remoteTelemetryService)
         {
             _activityLogRepository = activityLogRepository;
+            _remoteTelemetryService = remoteTelemetryService;
             Logs = LoadInitialLogs();
         }
 
@@ -25,9 +32,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 
         public void Add(string source, string user, string eventText, string severity)
         {
+            var now = DateTime.Now;
             var log = new ActivityLogItem
             {
-                Time = DateTime.Now.ToString("HH:mm:ss"),
+                OccurredAt = now,
+                Time = now.ToString("HH:mm:ss"),
                 Source = source,
                 User = string.IsNullOrWhiteSpace(user) ? "system" : user,
                 Event = eventText,
@@ -39,7 +48,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             {
                 try
                 {
-                    _activityLogRepository.Insert(log);
+                    log.Id = _activityLogRepository.Insert(log);
                     log.Saved = "YES";
                 }
                 catch
@@ -49,6 +58,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             }
 
             Logs.Insert(0, log);
+            if (_remoteTelemetryService != null)
+            {
+                _remoteTelemetryService.SendActivityLog(log);
+            }
         }
 
         private ObservableCollection<ActivityLogItem> LoadInitialLogs()

@@ -12,9 +12,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class ConsoleViewModel : ScreenViewModelBase, IDisposable
     {
         private const int StaleReadThreshold = 6;
+        private const int ProcessLampBit = 1; // NX_OD5121 DO2
+        private const int WarningLampBit = 2; // NX_OD5121 DO3
+        private const int AiControlLampBit = 3; // NX_OD5121 DO4
         private readonly ITrainerClient _trainerClient;
         private readonly ActivityLogStore _activityLogStore;
         private readonly SensorSnapshotRepository _sensorSnapshotRepository;
+        private readonly IRemoteTelemetryService _remoteTelemetryService;
         private readonly AppSettingsStore _settings;
         private readonly DispatcherTimer _pollingTimer;
         private readonly UserSession _session;
@@ -38,6 +42,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private bool _wasRiskWarningActive;
         private bool _autoShutdownIssued;
         private bool _forceShutdownAllowedByRisk;
+        private bool _isProcessRunning;
+        private bool _isAiControlRunning;
+        private bool _isOpticalSensorOn;
+        private bool _isInductiveSensorOn;
         private string _connectionStatusText;
         private string _connectionStatusTone;
         private string _lastUpdateText;
@@ -63,79 +71,86 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _inductiveSensorTone;
 
         public ConsoleViewModel()
-            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), new AdsSensorTrainerClient())
+            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session)
-            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), new AdsSensorTrainerClient())
+            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore)
-            : this(session, activityLogStore, null, new AppSettingsStore(), new AdsSensorTrainerClient())
+            : this(session, activityLogStore, null, new AppSettingsStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(ITrainerClient trainerClient)
-            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), trainerClient)
+            : this(new UserSession(), new ActivityLogStore(), null, new AppSettingsStore(), null, trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ITrainerClient trainerClient)
-            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), trainerClient)
+            : this(session, new ActivityLogStore(), null, new AppSettingsStore(), null, trainerClient)
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository)
-            : this(session, activityLogStore, sensorSnapshotRepository, new AppSettingsStore(), new AdsSensorTrainerClient())
+            : this(session, activityLogStore, sensorSnapshotRepository, new AppSettingsStore(), null, new AdsSensorTrainerClient())
         {
         }
 
         public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings)
-            : this(session, activityLogStore, sensorSnapshotRepository, settings, new AdsSensorTrainerClient())
+            : this(session, activityLogStore, sensorSnapshotRepository, settings, null, new AdsSensorTrainerClient())
         {
         }
 
-        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings, ITrainerClient trainerClient)
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings, IRemoteTelemetryService remoteTelemetryService)
+            : this(session, activityLogStore, sensorSnapshotRepository, settings, remoteTelemetryService, new AdsSensorTrainerClient())
+        {
+        }
+
+        public ConsoleViewModel(UserSession session, ActivityLogStore activityLogStore, SensorSnapshotRepository sensorSnapshotRepository, AppSettingsStore settings, IRemoteTelemetryService remoteTelemetryService, ITrainerClient trainerClient)
         {
             _session = session;
             _activityLogStore = activityLogStore;
             _sensorSnapshotRepository = sensorSnapshotRepository;
+            _remoteTelemetryService = remoteTelemetryService;
             _settings = settings ?? new AppSettingsStore();
             _trainerClient = trainerClient;
             _riskWindowStartedAt = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
 
-            Title = "WPF Equipment Control Console";
-            Description = "Desktop interface for field control, sensor review, and activity monitoring.";
+            Title = "WPF 장비 제어 콘솔";
+            Description = "센서 상태, 장비 제어, 작업 로그를 실시간으로 확인합니다.";
 
             Sensors = new ObservableCollection<SensorMetric>
             {
-                new SensorMetric { Name = "Pressure", Value = "--", Unit = "bar", RangeText = "Raw: --", BadgeText = "WAIT", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "Vibration", Value = "--", Unit = "level", RangeText = "Raw: --", BadgeText = "WAIT", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "Temperature", Value = "--", Unit = "C", RangeText = "Raw: --", BadgeText = "WAIT", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "Humidity", Value = "--", Unit = "%", RangeText = "Raw: --", BadgeText = "WAIT", Tone = "Disabled", IndicatorWidth = 0 }
+                new SensorMetric { Name = "압력", Value = "--", Unit = "bar", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
+                new SensorMetric { Name = "진동", Value = "--", Unit = "level", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
+                new SensorMetric { Name = "온도", Value = "--", Unit = "C", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
+                new SensorMetric { Name = "습도", Value = "--", Unit = "%", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 }
             };
 
             ActivityLogs = _activityLogStore.Logs;
 
-            ConnectionStatusText = "DISCONNECTED";
+            ConnectionStatusText = "연결 안 됨";
             ConnectionStatusTone = "Disabled";
-            LastUpdateText = "LAST UPDATE --:--:--";
-            EtherCatStatusText = "DISCONNECTED";
+            LastUpdateText = "읽기 --:--:--";
+            EtherCatStatusText = "연결 안 됨";
             EtherCatStatusTone = "Disabled";
-            SummaryBadgeText = "WAITING";
+            SummaryBadgeText = "대기";
             SummaryTone = "Disabled";
-            SummaryText = "Waiting for TwinCAT ADS connection. Last known sensor values will remain visible if reads fail.";
-            RiskStatusText = "AI READY";
+            SummaryText = "TwinCAT ADS 연결을 기다리는 중입니다. 읽기 실패 시 마지막 센서값은 화면에 유지됩니다.";
+            RiskStatusText = "AI 준비";
             RiskStatusTone = "Normal";
             RiskDetailText = "압력, 진동, 온도, 습도 기준으로 위험 조건을 감시합니다.";
             SetDigitalInputs(false, false, false, false, false, false);
-            ProcessStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI1 Process Start", false), parameter => CanExecuteApprovedCommand());
-            ProcessStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI2 Process Stop", false), parameter => CanExecuteApprovedCommand());
-            AiControlStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI3 AI Control Start", true), parameter => CanExecuteAdminCommand());
-            AiControlStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI4 AI Control Stop", true), parameter => CanExecuteAdminCommand());
+            TrySetStatusLamps(false, false, false);
+            ProcessStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI1 Process Start", false), parameter => CanExecuteProcessStart());
+            ProcessStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI2 Process Stop", false), parameter => CanExecuteProcessStop());
+            AiControlStartCommand = new RelayCommand(parameter => ExecuteControlCommand("DI3 AI Control Start", true), parameter => CanExecuteAiControlStart());
+            AiControlStopCommand = new RelayCommand(parameter => ExecuteControlCommand("DI4 AI Control Stop", true), parameter => CanExecuteAiControlStop());
             ForceShutdownCommand = new RelayCommand(parameter => ExecuteForceShutdown(false), parameter => CanExecuteForceShutdown());
 
             _pollingTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -159,9 +174,69 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public ICommand AiControlStopCommand { get; private set; }
         public ICommand ForceShutdownCommand { get; private set; }
 
+        public string ProcessRunStateText
+        {
+            get { return _isProcessRunning ? "진행 중" : "정지"; }
+        }
+
+        public string ProcessRunStateTone
+        {
+            get { return _isProcessRunning ? "Normal" : "Disabled"; }
+        }
+
+        public string ProcessRunDetailText
+        {
+            get
+            {
+                if (_isProcessRunning)
+                {
+                    return "DI1 공정 시작 후 Running 상태입니다. DI2 공정 정지로 종료합니다.";
+                }
+
+                return IsFoupReady
+                    ? "FOUP A/B 감지 완료. DI1 공정 시작으로 Running 상태로 전환합니다."
+                    : "FOUP A/B 감지가 필요합니다. 광센서와 근접센서가 모두 ON일 때 공정 시작이 가능합니다.";
+            }
+        }
+
+        public string FoupReadyText
+        {
+            get { return IsFoupReady ? "FOUP 준비" : "FOUP 대기"; }
+        }
+
+        public string FoupReadyTone
+        {
+            get { return IsFoupReady ? "Normal" : "Warning"; }
+        }
+
+        public string FoupReadyDetailText
+        {
+            get { return IsFoupReady ? "광센서와 근접센서가 모두 ON입니다." : "공정 시작 조건: 광센서 ON + 근접센서 ON"; }
+        }
+
+        private bool IsFoupReady
+        {
+            get { return _isOpticalSensorOn && _isInductiveSensorOn; }
+        }
+
+        public string AiRunStateText
+        {
+            get { return _isAiControlRunning ? "실행 중" : "정지"; }
+        }
+
+        public string AiRunStateTone
+        {
+            get { return _isAiControlRunning ? "Warning" : "Disabled"; }
+        }
+
+        public string AiRunDetailText
+        {
+            get { return _isAiControlRunning ? "AI 제어가 실행 중입니다. DI4 AI 제어 정지로 종료합니다." : "AI 제어 정지 상태입니다. 관리자 권한으로 DI3 AI 제어 시작을 실행할 수 있습니다."; }
+        }
+
         public string AiControlAccessText
         {
-            get { return _session.IsAdmin ? "ADMIN READY" : "ADMIN REQUIRED"; }
+            get { return _session.IsAdmin ? "관리자 가능" : "관리자 필요"; }
         }
 
         public string AiControlAccessTone
@@ -171,7 +246,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         public string ForceShutdownAccessText
         {
-            get { return _session.IsAdmin ? "ADMIN ENABLED" : (_forceShutdownAllowedByRisk ? "RISK ENABLED" : "ADMIN ONLY"); }
+            get { return _session.IsAdmin ? "가능" : (_forceShutdownAllowedByRisk ? "위험 허용" : "잠김"); }
         }
 
         public string ForceShutdownAccessTone
@@ -329,6 +404,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _pollingTimer.Tick -= OnPollingTimerTick;
             _session.PropertyChanged -= OnSessionPropertyChanged;
             TrySetRunningLampOff();
+            TrySetStatusLamps(false, false, false);
             _trainerClient.Dispose();
         }
 
@@ -349,10 +425,51 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 OnPropertyChanged("AiControlAccessText");
                 OnPropertyChanged("AiControlAccessTone");
+                if (!_session.IsApproved)
+                {
+                    _isProcessRunning = false;
+                    _isAiControlRunning = false;
+                    NotifyProcessStateChanged();
+                    NotifyAiStateChanged();
+                }
+
                 OnPropertyChanged("ForceShutdownAccessText");
                 OnPropertyChanged("ForceShutdownAccessTone");
                 CommandManager.InvalidateRequerySuggested();
             }
+        }
+
+        private void TrySetStatusLamps(bool processOn, bool warningOn, bool aiOn)
+        {
+            TrySetStatusLamp(ProcessLampBit, processOn);
+            TrySetStatusLamp(WarningLampBit, warningOn);
+            TrySetStatusLamp(AiControlLampBit, aiOn);
+        }
+
+        private void TrySetStatusLamp(int bitIndex, bool isOn)
+        {
+            try
+            {
+                _trainerClient.SetDigitalOutput(bitIndex, isOn);
+            }
+            catch
+            {
+            }
+        }
+
+        private void SyncProcessLamp()
+        {
+            TrySetStatusLamp(ProcessLampBit, _isProcessRunning);
+        }
+
+        private void SyncAiControlLamp()
+        {
+            TrySetStatusLamp(AiControlLampBit, _isAiControlRunning);
+        }
+
+        private void SyncWarningLamp(bool isOn)
+        {
+            TrySetStatusLamp(WarningLampBit, isOn);
         }
 
         private bool CanExecuteApprovedCommand()
@@ -360,9 +477,29 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             return !_disposed && _session.IsApproved;
         }
 
+        private bool CanExecuteProcessStart()
+        {
+            return CanExecuteApprovedCommand() && !_isProcessRunning && IsFoupReady;
+        }
+
+        private bool CanExecuteProcessStop()
+        {
+            return CanExecuteApprovedCommand() && _isProcessRunning;
+        }
+
         private bool CanExecuteAdminCommand()
         {
             return !_disposed && _session.IsAdmin;
+        }
+
+        private bool CanExecuteAiControlStart()
+        {
+            return CanExecuteAdminCommand() && !_isAiControlRunning;
+        }
+
+        private bool CanExecuteAiControlStop()
+        {
+            return CanExecuteAdminCommand() && _isAiControlRunning;
         }
 
         private bool CanExecuteForceShutdown()
@@ -374,40 +511,184 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             if (adminOnly && !_session.IsAdmin)
             {
-                AddActivityLog("Control", commandName + " blocked - admin required", "RISK");
+                AddActivityLog("제어", ToDisplayCommandName(commandName) + " 차단 - 관리자 권한 필요", "RISK");
                 return;
             }
 
             if (!_session.IsApproved)
             {
-                AddActivityLog("Control", commandName + " blocked - approved login required", "RISK");
+                AddActivityLog("제어", ToDisplayCommandName(commandName) + " 차단 - 승인된 로그인 필요", "RISK");
                 return;
             }
 
-            AddActivityLog("Control", commandName + " command accepted", adminOnly ? "WARN" : "INFO");
-            SummaryBadgeText = "COMMAND READY";
+            if (!ApplyControlStateTransition(commandName))
+            {
+                return;
+            }
+
+            AddActivityLog("제어", ToDisplayCommandName(commandName) + " 명령 승인", adminOnly ? "WARN" : "INFO");
+            SummaryBadgeText = ToDisplayCommandName(commandName);
             SummaryTone = adminOnly ? "Warning" : "Normal";
-            SummaryText = commandName + " was accepted by the WPF command layer. NX_OD5121 DO2~DO4 are reserved for status lamps and are not pulsed by this command.";
+            SummaryText = BuildControlSummaryText(commandName);
         }
 
         private void ExecuteForceShutdown(bool automatic)
         {
             if (!automatic && !_session.IsAdmin && !_forceShutdownAllowedByRisk)
             {
-                AddActivityLog("Control", "Force Shutdown blocked - admin or AI risk condition required", "RISK");
+                AddActivityLog("제어", "강제 정지 차단 - 관리자 또는 AI 위험 조건 필요", "RISK");
                 return;
             }
 
             if (!automatic && !_session.IsApproved)
             {
-                AddActivityLog("Control", "Force Shutdown blocked - approved login required", "RISK");
+                AddActivityLog("제어", "강제 정지 차단 - 승인된 로그인 필요", "RISK");
                 return;
             }
 
-            AddActivityLog(automatic ? "AI Rule" : "Control", automatic ? "Auto Force Shutdown event raised" : "Force Shutdown event raised", "RISK");
-            SummaryBadgeText = automatic ? "AUTO STOP" : "FORCE STOP";
+            _isProcessRunning = false;
+            _isAiControlRunning = false;
+            NotifyProcessStateChanged();
+            NotifyAiStateChanged();
+            SyncWarningLamp(true);
+            AddActivityLog(automatic ? "AI 규칙" : "제어", automatic ? "자동 강제 정지 이벤트 발생" : "강제 정지 이벤트 발생", "RISK");
+            SummaryBadgeText = automatic ? "자동 정지" : "강제 정지";
             SummaryTone = "Danger";
-            SummaryText = "Force Shutdown event was raised in the WPF command layer. NX_OD5121 DO2~DO4 are reserved for status lamps and are not pulsed by this command.";
+            SummaryText = "WPF 제어 계층에서 강제 정지 이벤트가 발생했습니다. NX_OD5121 DO2~DO4는 상태 램프 전용이므로 이 버튼에서 pulse 출력하지 않습니다.";
+        }
+
+        private bool ApplyControlStateTransition(string commandName)
+        {
+            if (string.Equals(commandName, "DI1 Process Start", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_isProcessRunning)
+                {
+                    AddActivityLog("제어", "DI1 공정 시작 차단 - 이미 진행 중", "WARN");
+                    return false;
+                }
+
+                if (!IsFoupReady)
+                {
+                    AddActivityLog("제어", "DI1 공정 시작 차단 - FOUP A/B 감지 필요", "WARN");
+                    SummaryBadgeText = "공정 대기";
+                    SummaryTone = "Warning";
+                    SummaryText = "광센서와 근접센서가 모두 ON일 때 공정 시작이 가능합니다.";
+                    return false;
+                }
+
+                _isProcessRunning = true;
+                NotifyProcessStateChanged();
+                return true;
+            }
+
+            if (string.Equals(commandName, "DI2 Process Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_isProcessRunning)
+                {
+                    AddActivityLog("제어", "DI2 공정 정지 차단 - 공정이 이미 정지 상태", "WARN");
+                    return false;
+                }
+
+                _isProcessRunning = false;
+                NotifyProcessStateChanged();
+                return true;
+            }
+
+            if (string.Equals(commandName, "DI3 AI Control Start", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_isAiControlRunning)
+                {
+                    AddActivityLog("제어", "DI3 AI 제어 시작 차단 - 이미 실행 중", "WARN");
+                    return false;
+                }
+
+                _isAiControlRunning = true;
+                NotifyAiStateChanged();
+                return true;
+            }
+
+            if (string.Equals(commandName, "DI4 AI Control Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_isAiControlRunning)
+                {
+                    AddActivityLog("제어", "DI4 AI 제어 정지 차단 - AI 제어가 이미 정지 상태", "WARN");
+                    return false;
+                }
+
+                _isAiControlRunning = false;
+                NotifyAiStateChanged();
+                return true;
+            }
+
+            return true;
+        }
+
+        private string BuildControlSummaryText(string commandName)
+        {
+            if (string.Equals(commandName, "DI1 Process Start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "FOUP A/B 감지 조건을 만족하여 공정 상태가 Running으로 전환되었습니다.";
+            }
+
+            if (string.Equals(commandName, "DI2 Process Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                return "공정 상태가 정지로 전환되었습니다. DI1 공정 시작으로 다시 Running 상태가 됩니다.";
+            }
+
+            if (string.Equals(commandName, "DI3 AI Control Start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "AI 제어 상태가 실행 중으로 전환되었습니다. DI4 AI 제어 정지 명령 전까지 실행 중으로 표시됩니다.";
+            }
+
+            if (string.Equals(commandName, "DI4 AI Control Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                return "AI 제어 상태가 정지로 전환되었습니다.";
+            }
+
+            return ToDisplayCommandName(commandName) + " 명령이 승인되었습니다.";
+        }
+
+        private void NotifyProcessStateChanged()
+        {
+            SyncProcessLamp();
+            OnPropertyChanged("ProcessRunStateText");
+            OnPropertyChanged("ProcessRunStateTone");
+            OnPropertyChanged("ProcessRunDetailText");
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private void NotifyAiStateChanged()
+        {
+            SyncAiControlLamp();
+            OnPropertyChanged("AiRunStateText");
+            OnPropertyChanged("AiRunStateTone");
+            OnPropertyChanged("AiRunDetailText");
+            CommandManager.InvalidateRequerySuggested();
+        }
+
+        private static string ToDisplayCommandName(string commandName)
+        {
+            if (string.Equals(commandName, "DI1 Process Start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DI1 공정 시작";
+            }
+
+            if (string.Equals(commandName, "DI2 Process Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DI2 공정 정지";
+            }
+
+            if (string.Equals(commandName, "DI3 AI Control Start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DI3 AI 제어 시작";
+            }
+
+            if (string.Equals(commandName, "DI4 AI Control Stop", StringComparison.OrdinalIgnoreCase))
+            {
+                return "DI4 AI 제어 정지";
+            }
+
+            return commandName;
         }
 
         private void AddActivityLog(string source, string eventText, string severity)
@@ -506,17 +787,17 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             EvaluateRiskRules(pressure, vibration, temperature, humidity);
             TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
-            ConnectionStatusText = "ADS READ OK";
+            ConnectionStatusText = "ADS 정상";
             ConnectionStatusTone = "Normal";
-            LastUpdateText = "READ #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
-            EtherCatStatusText = "READY";
+            LastUpdateText = "읽기 #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
+            EtherCatStatusText = "준비";
             EtherCatStatusTone = "Normal";
 
             if (SummaryTone != "Danger")
             {
-                SummaryBadgeText = "PLC LINK";
+                SummaryBadgeText = "PLC 연결";
                 SummaryTone = "Normal";
-                SummaryText = "TwinCAT ADS is readable. Sensor values are monitored by AI risk rules.";
+                SummaryText = "TwinCAT ADS 읽기 정상. 센서값을 AI 위험 규칙으로 감시 중입니다.";
             }
         }
 
@@ -549,17 +830,17 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             EvaluateRiskRules(pressure, vibration, temperature, humidity);
             TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
-            ConnectionStatusText = "STALE";
+            ConnectionStatusText = "값 정지";
             ConnectionStatusTone = "Warning";
-            LastUpdateText = "READ #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
-            EtherCatStatusText = "STALE";
+            LastUpdateText = "읽기 #" + _successfulReadCount + " " + snapshot.ReceivedAt.ToString("HH:mm:ss");
+            EtherCatStatusText = "값 정지";
             EtherCatStatusTone = "Warning";
 
             if (SummaryTone != "Danger")
             {
-                SummaryBadgeText = "STALE";
+                SummaryBadgeText = "값 정지";
                 SummaryTone = "Warning";
-                SummaryText = "PLC raw sensor values have not changed for about 3 seconds. ADS is readable, but sensor input updates appear stopped.";
+                SummaryText = "PLC 원시 센서값이 약 3초 동안 변하지 않았습니다. ADS는 읽히지만 센서 입력 갱신이 멈춘 것으로 보입니다.";
             }
         }
 
@@ -585,7 +866,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             try
             {
-                _sensorSnapshotRepository.Insert(new SensorSnapshotRecord
+                var record = new SensorSnapshotRecord
                 {
                     CapturedAt = snapshot.ReceivedAt,
                     PressureRaw = snapshot.Pressure,
@@ -602,12 +883,18 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                     DigitalInput4 = snapshot.DigitalInput4,
                     OpticalSensor = snapshot.OpticalSensor,
                     InductiveSensor = snapshot.InductiveSensor
-                });
+                };
+                _sensorSnapshotRepository.Insert(record);
+                if (_remoteTelemetryService != null)
+                {
+                    _remoteTelemetryService.SendSensorSnapshot(record);
+                }
+
                 _lastSensorSnapshotSavedAt = now;
             }
             catch (Exception ex)
             {
-                AddActivityLog("Storage", "Sensor snapshot save failed: " + ex.Message, "WARN");
+                AddActivityLog("저장소", "센서 스냅샷 저장 실패: " + ex.Message, "WARN");
                 _lastSensorSnapshotSavedAt = now;
             }
         }
@@ -621,16 +908,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _forceShutdownAllowedByRisk = false;
             NotifyForceShutdownStateChanged();
-            ConnectionStatusText = "READ ERROR";
+            ConnectionStatusText = "읽기 오류";
             ConnectionStatusTone = "Danger";
-            EtherCatStatusText = "DISCONNECTED";
+            EtherCatStatusText = "연결 안 됨";
             EtherCatStatusTone = "Danger";
-            RiskStatusText = "AI PAUSED";
+            RiskStatusText = "AI 일시정지";
             RiskStatusTone = "Disabled";
-            RiskDetailText = "ADS read failed. Risk rule waits for the next valid sensor snapshot.";
-            SummaryBadgeText = "READ ERROR";
+            RiskDetailText = "ADS 읽기 실패. 다음 정상 센서 스냅샷까지 위험 규칙을 대기합니다.";
+            SummaryBadgeText = "읽기 오류";
             SummaryTone = "Danger";
-            SummaryText = "Unable to read TwinCAT ADS data. Check TwinCAT runtime, ADS route, port 851, and GVL.NX_* variables. " + ex.Message;
+            SummaryText = "TwinCAT ADS 데이터를 읽을 수 없습니다. TwinCAT 런타임, ADS Route, 851 포트, GVL.NX_* 변수를 확인하세요. " + ex.Message;
         }
 
         private void EvaluateRiskRules(double pressure, double vibration, double temperature, double humidity)
@@ -641,28 +928,28 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             if (pressure >= _settings.PressureWarningThreshold)
             {
                 warningCount++;
-                details = AppendRiskDetail(details, "Pressure " + pressure.ToString("0.00") + " bar");
+                details = AppendRiskDetail(details, "압력 " + pressure.ToString("0.00") + " bar");
                 SetSensorWarning(Sensors[0]);
             }
 
             if (vibration >= _settings.VibrationWarningThreshold)
             {
                 warningCount++;
-                details = AppendRiskDetail(details, "Vibration " + vibration.ToString("0.0"));
+                details = AppendRiskDetail(details, "진동 " + vibration.ToString("0.0"));
                 SetSensorWarning(Sensors[1]);
             }
 
             if (temperature >= _settings.TemperatureWarningThreshold)
             {
                 warningCount++;
-                details = AppendRiskDetail(details, "Temperature " + temperature.ToString("0.0") + " C");
+                details = AppendRiskDetail(details, "온도 " + temperature.ToString("0.0") + " C");
                 SetSensorWarning(Sensors[2]);
             }
 
             if (humidity >= _settings.HumidityWarningThreshold)
             {
                 warningCount++;
-                details = AppendRiskDetail(details, "Humidity " + humidity.ToString("0.0") + " %");
+                details = AppendRiskDetail(details, "습도 " + humidity.ToString("0.0") + " %");
                 SetSensorWarning(Sensors[3]);
             }
 
@@ -673,9 +960,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 _wasRiskWarningActive = false;
                 _autoShutdownIssued = false;
                 _forceShutdownAllowedByRisk = false;
-                RiskStatusText = "AI NORMAL";
+                RiskStatusText = "AI 정상";
                 RiskStatusTone = "Normal";
-                RiskDetailText = "No risk threshold is exceeded.";
+                SyncWarningLamp(false);
+                RiskDetailText = "위험 기준 초과 없음.";
                 NotifyForceShutdownStateChanged();
                 return;
             }
@@ -690,14 +978,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             if (!_wasRiskWarningActive)
             {
                 _riskWarningCount += warningCount;
-                AddActivityLog("AI Rule", details + " exceeded. Risk count " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit + " within " + _settings.RiskWindowSeconds + "s.", _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
+                AddActivityLog("AI 규칙", details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
             }
 
             _wasRiskWarningActive = true;
             _forceShutdownAllowedByRisk = true;
-            RiskStatusText = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "AI RISK" : "AI WARNING";
+            RiskStatusText = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "AI 위험" : "AI 경고";
             RiskStatusTone = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "Danger" : "Warning";
-            RiskDetailText = details + " exceeded. Risk count " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit + " within " + _settings.RiskWindowSeconds + "s.";
+            SyncWarningLamp(true);
+            RiskDetailText = details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit;
             NotifyForceShutdownStateChanged();
 
             if (_riskWarningCount >= _settings.AutoShutdownWarningLimit && !_autoShutdownIssued)
@@ -721,13 +1010,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         private void SetSensorStale(SensorMetric sensor)
         {
-            sensor.BadgeText = "STALE";
+            sensor.BadgeText = "정지";
             sensor.Tone = "Warning";
         }
 
         private void SetSensorWarning(SensorMetric sensor)
         {
-            sensor.BadgeText = "WARN";
+            sensor.BadgeText = "경고";
             sensor.Tone = "Warning";
         }
 
@@ -743,7 +1032,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             sensor.Value = calibratedValue.ToString(format);
             sensor.RangeText = "Raw: " + rawValue;
-            sensor.BadgeText = "LIVE";
+            sensor.BadgeText = "정상";
             sensor.Tone = "Normal";
             sensor.IndicatorWidth = CalculateIndicatorWidth(calibratedValue, minimum, maximum);
             return calibratedValue;
@@ -794,6 +1083,18 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             bool opticalSensor,
             bool inductiveSensor)
         {
+            var foupReadyBefore = IsFoupReady;
+            _isOpticalSensorOn = opticalSensor;
+            _isInductiveSensorOn = inductiveSensor;
+            if (foupReadyBefore != IsFoupReady)
+            {
+                OnPropertyChanged("FoupReadyText");
+                OnPropertyChanged("FoupReadyTone");
+                OnPropertyChanged("FoupReadyDetailText");
+                OnPropertyChanged("ProcessRunDetailText");
+                CommandManager.InvalidateRequerySuggested();
+            }
+
             SetDigitalStatus(digitalInput1, out _digitalInput1Text, out _digitalInput1Tone, "DigitalInput1Text", "DigitalInput1Tone");
             SetDigitalStatus(digitalInput2, out _digitalInput2Text, out _digitalInput2Tone, "DigitalInput2Text", "DigitalInput2Tone");
             SetDigitalStatus(digitalInput3, out _digitalInput3Text, out _digitalInput3Tone, "DigitalInput3Text", "DigitalInput3Tone");

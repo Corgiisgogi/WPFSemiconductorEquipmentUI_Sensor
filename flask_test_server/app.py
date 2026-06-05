@@ -42,6 +42,16 @@ def init_db() -> None:
             );
             """
         )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensor_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                received_at TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                payload TEXT NOT NULL
+            );
+            """
+        )
         ensure_seed_user(db, "admin", "admin1234", "Test Admin", "Admin", "Approved")
         ensure_seed_user(db, "operator01", "1234", "Operator 01", "Operator", "Approved")
         ensure_seed_user(db, "pending01", "1234", "Pending User", "Operator", "Pending")
@@ -159,6 +169,31 @@ def user_status(user_id: str):
         return jsonify({"success": False, "userId": user_id, "approvalStatus": "Rejected", "message": "User not found."}), 404
 
     return jsonify(user_to_dict(row, success=row["approval_status"] == "Approved"))
+
+
+@app.route("/api/sensor", methods=["POST"])
+@require_json
+def receive_sensor_event():
+    data = request.get_json() or {}
+    event_type = data.get("type") or "unknown"
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO sensor_events (received_at, event_type, payload) VALUES (?, ?, ?)",
+            (utc_now(), event_type, __import__("json").dumps(data, ensure_ascii=False)),
+        )
+        db.commit()
+    return jsonify({"success": True, "message": "Telemetry received.", "type": event_type})
+
+
+@app.route("/api/admin/sensor-events", methods=["GET"])
+def admin_sensor_events():
+    limit = int(request.args.get("limit", "100"))
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, received_at, event_type, payload FROM sensor_events ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return jsonify({"success": True, "events": [dict(row) for row in rows]})
 
 
 @app.route("/api/admin/users", methods=["GET"])

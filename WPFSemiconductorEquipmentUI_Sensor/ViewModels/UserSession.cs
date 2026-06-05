@@ -7,6 +7,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class UserSession : ViewModelBase
     {
         private string _userId;
+        private string _roleCode;
+        private string _approvalStatus;
         private string _roleText;
         private string _userStateText;
         private string _userStateTone;
@@ -22,6 +24,18 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             get { return _userId; }
             private set { SetProperty(ref _userId, value); }
+        }
+
+        public string RoleCode
+        {
+            get { return _roleCode; }
+            private set { SetProperty(ref _roleCode, value); }
+        }
+
+        public string ApprovalStatus
+        {
+            get { return _approvalStatus; }
+            private set { SetProperty(ref _approvalStatus, value); }
         }
 
         public string RoleText
@@ -58,83 +72,54 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             if (result == null)
             {
-                SetBlocked("guest", "Signed out", "LOCKED", "Danger");
+                SetSession("guest", "SignedOut", "Locked");
                 return;
             }
 
             var status = string.IsNullOrWhiteSpace(result.ApprovalStatus) ? (result.Success ? "Approved" : "Pending") : result.ApprovalStatus.Trim();
             var role = string.IsNullOrWhiteSpace(result.Role) ? "Operator" : result.Role.Trim();
             var userId = string.IsNullOrWhiteSpace(result.UserId) ? "guest" : result.UserId.Trim();
-
-            if (IsApprovedStatus(status) && result.Success)
-            {
-                UserId = userId;
-                RoleText = role;
-                UserStateText = "APPROVED";
-                UserStateTone = "Normal";
-                IsApproved = true;
-                IsAdmin = string.Equals(role, "Admin", System.StringComparison.OrdinalIgnoreCase);
-                CommandManager.InvalidateRequerySuggested();
-                return;
-            }
-
-            SetBlocked(userId, role, status.ToUpperInvariant(), StatusTone(status));
+            SetSession(userId, role, status, result.Success && IsApprovedStatus(status));
         }
 
         public void ApplyRegisterResult(RegisterResult result)
         {
             if (result == null)
             {
-                SetBlocked("guest", "Signed out", "LOCKED", "Danger");
+                SetSession("guest", "SignedOut", "Locked");
                 return;
             }
 
             var userId = string.IsNullOrWhiteSpace(result.UserId) ? "guest" : result.UserId.Trim();
             var status = string.IsNullOrWhiteSpace(result.ApprovalStatus) ? "Pending" : result.ApprovalStatus.Trim();
-            SetBlocked(userId, "Pending approval", status.ToUpperInvariant(), StatusTone(status));
+            SetSession(userId, "Pending", status, false);
         }
 
         public void LoginAsOperator(string userId)
         {
-            UserId = string.IsNullOrWhiteSpace(userId) ? "operator01" : userId.Trim();
-            RoleText = "Operator";
-            UserStateText = "APPROVED";
-            UserStateTone = "Normal";
-            IsApproved = true;
-            IsAdmin = false;
-            CommandManager.InvalidateRequerySuggested();
+            SetSession(string.IsNullOrWhiteSpace(userId) ? "operator01" : userId.Trim(), "Operator", "Approved", true);
         }
 
         public void LoginAsAdmin()
         {
-            UserId = "admin";
-            RoleText = "Admin";
-            UserStateText = "APPROVED";
-            UserStateTone = "Normal";
-            IsApproved = true;
-            IsAdmin = true;
-            CommandManager.InvalidateRequerySuggested();
+            SetSession("admin", "Admin", "Approved", true);
         }
 
         public void Logout()
         {
-            UserId = "guest";
-            RoleText = "Signed out";
-            UserStateText = "LOCKED";
-            UserStateTone = "Danger";
-            IsApproved = false;
-            IsAdmin = false;
-            CommandManager.InvalidateRequerySuggested();
+            SetSession("guest", "SignedOut", "Locked", false);
         }
 
-        private void SetBlocked(string userId, string role, string state, string tone)
+        private void SetSession(string userId, string roleCode, string approvalStatus, bool approvedOverride = false)
         {
             UserId = string.IsNullOrWhiteSpace(userId) ? "guest" : userId;
-            RoleText = string.IsNullOrWhiteSpace(role) ? "Signed out" : role;
-            UserStateText = string.IsNullOrWhiteSpace(state) ? "LOCKED" : state;
-            UserStateTone = string.IsNullOrWhiteSpace(tone) ? "Danger" : tone;
-            IsApproved = false;
-            IsAdmin = false;
+            RoleCode = string.IsNullOrWhiteSpace(roleCode) ? "SignedOut" : roleCode;
+            ApprovalStatus = string.IsNullOrWhiteSpace(approvalStatus) ? "Locked" : approvalStatus;
+            RoleText = ToRoleText(RoleCode);
+            UserStateText = ToStatusText(ApprovalStatus);
+            UserStateTone = ToStatusTone(ApprovalStatus);
+            IsApproved = approvedOverride && IsApprovedStatus(ApprovalStatus);
+            IsAdmin = IsApproved && string.Equals(RoleCode, "Admin", System.StringComparison.OrdinalIgnoreCase);
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -143,8 +128,58 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             return string.Equals(status, "Approved", System.StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string StatusTone(string status)
+        private static string ToRoleText(string role)
         {
+            if (string.Equals(role, "Admin", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "관리자";
+            }
+
+            if (string.Equals(role, "Operator", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "작업자";
+            }
+
+            if (string.Equals(role, "Pending", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "승인 대기";
+            }
+
+            return "로그아웃";
+        }
+
+        private static string ToStatusText(string status)
+        {
+            if (string.Equals(status, "Approved", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "승인됨";
+            }
+
+            if (string.Equals(status, "Pending", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "승인 대기";
+            }
+
+            if (string.Equals(status, "Rejected", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "거절됨";
+            }
+
+            if (string.Equals(status, "Disabled", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "비활성";
+            }
+
+            return "잠김";
+        }
+
+        private static string ToStatusTone(string status)
+        {
+            if (string.Equals(status, "Approved", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return "Normal";
+            }
+
             if (string.Equals(status, "Pending", System.StringComparison.OrdinalIgnoreCase))
             {
                 return "Warning";

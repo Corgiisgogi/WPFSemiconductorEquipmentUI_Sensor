@@ -6,7 +6,7 @@
         xmlns:views="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.Views"
         xmlns:viewModels="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.ViewModels"
         mc:Ignorable="d"
-        Title="Semiconductor Equipment Control"
+        Title="반도체 장비 제어"
         Width="1440"
         Height="900"
         MinWidth="1200"
@@ -81,7 +81,7 @@
 
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="SEMI CONTROL" FontSize="16" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}" />
-                    <TextBlock Text="EtherCAT Sensor Trainer" Margin="0,8,0,0" Style="{StaticResource CaptionText}" />
+                    <TextBlock Text="EtherCAT 센서 트레이너" Margin="0,8,0,0" Style="{StaticResource CaptionText}" />
                     <Border Height="1" Margin="0,12,0,14" Background="{StaticResource BrushBorder}" />
                     <ItemsControl ItemsSource="{Binding NavigationItems}">
                         <ItemsControl.ItemTemplate>

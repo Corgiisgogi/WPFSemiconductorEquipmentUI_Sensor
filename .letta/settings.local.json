@@ -1,0 +1,12 @@
+{
+  "lastAgent": null,
+  "memoryReminderInterval": "auto-compaction",
+  "reflectionTrigger": "compaction-event",
+  "reflectionStepCount": 25,
+  "reflectionSettingsByAgent": {
+    "agent-d23d9df2-3990-464a-878a-bd1421559760": {
+      "trigger": "compaction-event",
+      "stepCount": 25
+    }
+  }
+}

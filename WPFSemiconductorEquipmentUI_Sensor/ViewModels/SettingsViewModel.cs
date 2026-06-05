@@ -25,10 +25,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             _settings = settings;
             DatabasePath = databaseService == null ? "LocalAppData/equipment.db" : databaseService.DatabasePath;
-            Title = "System Settings";
-            Description = "Manage local console connection, access, risk, and log retention settings.";
+            Title = "시스템 설정";
+            Description = "로컬 콘솔의 연결, 인증, 위험 규칙, 로그 저장 설정을 관리합니다.";
             RefreshThresholdText();
-            SettingsStatusText = "DB LINKED";
+            SettingsStatusText = "DB 연결";
             SettingsStatusTone = "Normal";
             SaveCommand = new RelayCommand(parameter => SaveSettings());
             ResetCommand = new RelayCommand(parameter => ResetSettings());
@@ -78,7 +78,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _pressureWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.PressureWarningThreshold = parsed, "Pressure warning");
+                ApplyDoubleSetting(value, parsed => _settings.PressureWarningThreshold = parsed, "압력 경고 기준");
                 OnPropertyChanged();
             }
         }
@@ -94,7 +94,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _temperatureWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.TemperatureWarningThreshold = parsed, "Temperature warning");
+                ApplyDoubleSetting(value, parsed => _settings.TemperatureWarningThreshold = parsed, "온도 경고 기준");
                 OnPropertyChanged();
             }
         }
@@ -110,7 +110,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _vibrationWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.VibrationWarningThreshold = parsed, "Vibration warning");
+                ApplyDoubleSetting(value, parsed => _settings.VibrationWarningThreshold = parsed, "진동 경고 기준");
                 OnPropertyChanged();
             }
         }
@@ -126,7 +126,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _humidityWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.HumidityWarningThreshold = parsed, "Humidity warning");
+                ApplyDoubleSetting(value, parsed => _settings.HumidityWarningThreshold = parsed, "습도 경고 기준");
                 OnPropertyChanged();
             }
         }
@@ -190,14 +190,14 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             if (TryParseDouble(text, out parsed))
             {
                 apply(parsed);
-                SettingsStatusText = "EDITING";
+                SettingsStatusText = "수정 중";
                 SettingsStatusTone = "Blue";
                 return;
             }
 
-            SettingsStatusText = "INVALID";
+            SettingsStatusText = "입력 오류";
             SettingsStatusTone = "Danger";
-            Description = label + " must be a decimal number. Example: 0.20, 0.8, 7.5";
+            Description = label + "은(는) 소수 입력이 필요합니다. 예: 0.20, 0.8, 7.5";
             OnPropertyChanged("Description");
         }
 
@@ -224,14 +224,14 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 _settings.Save();
                 RefreshThresholdText();
-                SettingsStatusText = "SAVED";
+                SettingsStatusText = "저장됨";
                 SettingsStatusTone = "Normal";
             }
             catch (Exception ex)
             {
-                SettingsStatusText = "SAVE ERROR";
+                SettingsStatusText = "저장 오류";
                 SettingsStatusTone = "Danger";
-                Description = "Settings save failed: " + ex.Message;
+                Description = "설정 저장 실패: " + ex.Message;
                 OnPropertyChanged("Description");
             }
         }
@@ -248,15 +248,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             OnPropertyChanged("AutoShutdownWarningLimit");
             OnPropertyChanged("SensorSnapshotSaveIntervalSeconds");
             OnPropertyChanged("ApiBaseUrl");
-            SettingsStatusText = "DEFAULTS";
+            SettingsStatusText = "기본값";
             SettingsStatusTone = "Warning";
         }
 
         private void TestSettings()
         {
-            SettingsStatusText = "READY";
+            SettingsStatusText = "준비";
             SettingsStatusTone = "Blue";
-            Description = "Current settings are loaded and will be used by the Console AI risk rule immediately. Press SAVE to persist them to SQLite.";
+            Description = "현재 설정은 콘솔 AI 위험 규칙에 즉시 반영됩니다. SQLite에 영구 저장하려면 저장을 누르세요.";
             OnPropertyChanged("Description");
         }
 

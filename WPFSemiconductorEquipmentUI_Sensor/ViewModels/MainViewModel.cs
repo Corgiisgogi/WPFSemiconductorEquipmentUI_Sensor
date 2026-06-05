@@ -9,6 +9,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
     public class MainViewModel : ViewModelBase, IDisposable
     {
+        // Development/test switch: allows opening Settings before an Admin login so the Flask API URL
+        // can be changed between localhost and a classroom server. Set to false for final operation.
+        private const bool AllowSettingsWithoutAdminForApiSetup = true;
         private object _currentViewModel;
         private NavigationItem _authNavigationItem;
         private NavigationItem _settingsNavigationItem;
@@ -25,20 +28,27 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var appSettingsRepository = new AppSettingsRepository(databaseService);
             var appSettingsStore = new AppSettingsStore(appSettingsRepository);
             var authService = new FlaskAuthService(appSettingsStore);
-            var activityLogStore = new ActivityLogStore(activityLogRepository);
+            var remoteTelemetryService = new FlaskTelemetryService(appSettingsStore);
+            var activityLogStore = new ActivityLogStore(activityLogRepository, remoteTelemetryService);
             var auth = new LoginViewModel(Session, authService);
-            var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository, appSettingsStore);
-            var logs = new LogsViewModel(activityLogStore);
+            var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository, appSettingsStore, remoteTelemetryService);
+            var logs = new LogsViewModel(activityLogStore, activityLogRepository, sensorSnapshotRepository);
             var settings = new SettingsViewModel(appSettingsStore, databaseService);
 
-            _authNavigationItem = new NavigationItem { Title = "Auth", ViewModel = auth, IsSelected = true };
-            _settingsNavigationItem = new NavigationItem { Title = "Settings", ViewModel = settings, RequiresAdmin = true, IsVisible = Session.IsAdmin };
+            _authNavigationItem = new NavigationItem { Title = "인증", ViewModel = auth, IsSelected = true };
+            _settingsNavigationItem = new NavigationItem
+            {
+                Title = AllowSettingsWithoutAdminForApiSetup ? "설정(테스트)" : "설정",
+                ViewModel = settings,
+                RequiresAdmin = !AllowSettingsWithoutAdminForApiSetup,
+                IsVisible = AllowSettingsWithoutAdminForApiSetup || Session.IsAdmin
+            };
 
             NavigationItems = new ObservableCollection<NavigationItem>
             {
                 _authNavigationItem,
-                new NavigationItem { Title = "Console", ViewModel = console },
-                new NavigationItem { Title = "Logs", ViewModel = logs },
+                new NavigationItem { Title = "콘솔", ViewModel = console },
+                new NavigationItem { Title = "로그", ViewModel = logs },
                 _settingsNavigationItem
             };
 
@@ -72,7 +82,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            if (item.RequiresAdmin && !Session.IsAdmin)
+            if (item.RequiresAdmin && !Session.IsAdmin && !AllowSettingsWithoutAdminForApiSetup)
             {
                 NavigateToAuth();
                 return;
@@ -84,6 +94,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             item.IsSelected = true;
+            var logsViewModel = item.ViewModel as LogsViewModel;
+            if (logsViewModel != null)
+            {
+                logsViewModel.Refresh();
+            }
+
             CurrentViewModel = item.ViewModel;
             OnPropertyChanged("NavigationItems");
         }
@@ -103,8 +119,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            _settingsNavigationItem.IsVisible = Session.IsAdmin;
-            if (!Session.IsAdmin && object.ReferenceEquals(CurrentViewModel, _settingsNavigationItem.ViewModel))
+            _settingsNavigationItem.IsVisible = AllowSettingsWithoutAdminForApiSetup || Session.IsAdmin;
+            if (!AllowSettingsWithoutAdminForApiSetup && !Session.IsAdmin && object.ReferenceEquals(CurrentViewModel, _settingsNavigationItem.ViewModel))
             {
                 NavigateToAuth();
             }

@@ -7,5 +7,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
         AuthResult Login(string userId, string password);
         RegisterResult Register(string userId, string password, string displayName);
         AuthResult GetStatus(string userId);
+        bool CheckHealth();
     }
 }

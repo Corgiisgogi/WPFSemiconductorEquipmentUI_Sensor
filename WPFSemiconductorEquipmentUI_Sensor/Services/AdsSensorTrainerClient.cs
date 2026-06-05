@@ -70,6 +70,18 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             SetDigitalOutputBit(0, isOn);
         }
 
+        public void SetDigitalOutput(int bitIndex, bool isOn)
+        {
+            ThrowIfDisposed();
+
+            if (bitIndex < 0 || bitIndex > 15)
+            {
+                throw new ArgumentOutOfRangeException("bitIndex", "Digital output bits must be between 0 and 15.");
+            }
+
+            SetDigitalOutputBit(bitIndex, isOn);
+        }
+
         public void PulseDigitalOutput(int bitIndex, int durationMilliseconds)
         {
             ThrowIfDisposed();

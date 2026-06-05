@@ -124,6 +124,8 @@
       <DependentUpon>StatusBadge.xaml</DependentUpon>
     </Compile>
     <Compile Include="Models\ActivityLogItem.cs" />
+    <Compile Include="Models\ActivityLogSummary.cs" />
+    <Compile Include="Models\ActivityLogSearchCriteria.cs" />
     <Compile Include="Models\NavigationItem.cs" />
     <Compile Include="Models\SensorMetric.cs" />
     <Compile Include="Models\SensorSnapshotRecord.cs" />
@@ -133,6 +135,8 @@
     <Compile Include="Services\ActivityLogStore.cs" />
     <Compile Include="Services\SensorSnapshotRepository.cs" />
     <Compile Include="Services\FlaskAuthService.cs" />
+    <Compile Include="Services\FlaskTelemetryService.cs" />
+    <Compile Include="Services\IRemoteTelemetryService.cs" />
     <Compile Include="Services\IAuthService.cs" />
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\ActivityLogRepository.cs" />

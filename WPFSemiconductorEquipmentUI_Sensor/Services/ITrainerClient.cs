@@ -12,6 +12,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 
         void SetRunningLamp(bool isOn);
 
+        void SetDigitalOutput(int bitIndex, bool isOn);
+
         void PulseDigitalOutput(int bitIndex, int durationMilliseconds);
     }
 }

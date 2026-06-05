@@ -5,8 +5,8 @@
     <StackPanel>
         <DockPanel>
             <StackPanel Margin="0,0,10,0">
-                <TextBlock Text="WPF Equipment Control Console" Style="{StaticResource PageTitleText}" />
-                <TextBlock Text="Field control, live sensor status, and operation log." Style="{StaticResource BodyText}" />
+                <TextBlock Text="WPF 장비 제어 콘솔" Style="{StaticResource PageTitleText}" />
+                <TextBlock Text="센서 상태, 장비 제어, 작업 로그를 실시간으로 확인합니다." Style="{StaticResource BodyText}" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <controls:StatusBadge Text="{Binding ConnectionStatusText}" Tone="{Binding ConnectionStatusTone}" Margin="0,0,8,0" />
@@ -44,20 +44,20 @@
 
             <Border Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
-                    <TextBlock Text="Operator &amp; System" Style="{StaticResource SectionTitleText}" />
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="User State" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.UserStateText}" Tone="{Binding Session.UserStateTone}" Width="100" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="Role" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.RoleText}" Tone="Blue" Width="100" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="DB" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="CONNECTED" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <TextBlock Text="사용자 / 시스템" Style="{StaticResource SectionTitleText}" />
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="사용자 상태" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.UserStateText}" Tone="{Binding Session.UserStateTone}" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="권한" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.RoleText}" Tone="Blue" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="DB" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="연결됨" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,22,0,0"><TextBlock Text="EtherCAT" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding EtherCatStatusText}" Tone="{Binding EtherCatStatusTone}" Width="112" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="Control" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="ENABLED" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="제어 권한" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="활성화" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
                     <Border Height="1" Margin="0,24,0,14" Background="{StaticResource BrushBorder}" />
-                    <TextBlock Text="Digital Inputs" Style="{StaticResource SectionTitleText}" />
+                    <TextBlock Text="디지털 입력" Style="{StaticResource SectionTitleText}" />
                     <DockPanel Margin="0,14,0,0"><TextBlock Text="DI1 공정 시작" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput1Text}" Tone="{Binding DigitalInput1Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,10,0,0"><TextBlock Text="DI2 공정 정지" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput2Text}" Tone="{Binding DigitalInput2Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,10,0,0"><TextBlock Text="DI3 AI 시작" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput3Text}" Tone="{Binding DigitalInput3Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,10,0,0"><TextBlock Text="DI4 AI 정지" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput4Text}" Tone="{Binding DigitalInput4Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,10,0,0"><TextBlock Text="Optical" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding OpticalSensorText}" Tone="{Binding OpticalSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,10,0,0"><TextBlock Text="Inductive" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding InductiveSensorText}" Tone="{Binding InductiveSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,10,0,0"><TextBlock Text="광센서" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding OpticalSensorText}" Tone="{Binding OpticalSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,10,0,0"><TextBlock Text="근접센서" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding InductiveSensorText}" Tone="{Binding InductiveSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                 </StackPanel>
             </Border>
 
@@ -94,19 +94,31 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <DockPanel Margin="10,0">
-                            <TextBlock Text="Activity Log" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center" />
+                            <TextBlock Text="활동 로그" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8">
-                                <controls:StatusBadge Text="ALL" Tone="Blue" Margin="0,0,8,0" />
-                                <controls:StatusBadge Text="WARN" Tone="Warning" Margin="0,0,8,0" />
-                                <controls:StatusBadge Text="RISK" Tone="Danger" />
+                                <controls:StatusBadge Text="전체" Tone="Blue" Margin="0,0,8,0" />
+                                <controls:StatusBadge Text="경고" Tone="Warning" Margin="0,0,8,0" />
+                                <controls:StatusBadge Text="위험" Tone="Danger" />
                             </StackPanel>
                         </DockPanel>
-                        <DataGrid Grid.Row="1" ItemsSource="{Binding ActivityLogs}" BorderThickness="0">
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding ActivityLogs}"
+                                  BorderThickness="0"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  SelectionUnit="FullRow"
+                                  SelectionMode="Single"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserResizeColumns="False"
+                                  CanUserResizeRows="False"
+                                  CanUserSortColumns="False">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Time" Binding="{Binding Time}" Width="80" />
-                                <DataGridTextColumn Header="Event" Binding="{Binding Event}" Width="*" />
-                                <DataGridTextColumn Header="User" Binding="{Binding User}" Width="120" />
-                                <DataGridTextColumn Header="Level" Binding="{Binding Severity}" Width="90" />
+                                <DataGridTextColumn Header="시간" Binding="{Binding Time}" Width="80" />
+                                <DataGridTextColumn Header="이벤트" Binding="{Binding Event}" Width="*" />
+                                <DataGridTextColumn Header="사용자" Binding="{Binding User}" Width="120" />
+                                <DataGridTextColumn Header="등급" Binding="{Binding Severity}" Width="90" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
@@ -115,38 +127,60 @@
 
             <Border Grid.Column="4" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
-                    <TextBlock Text="Equipment Control" Style="{StaticResource SectionTitleText}" />
-                    <Button Content="DI1 - 공정 시작" Command="{Binding ProcessStartCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,18,0,0" />
+                    <TextBlock Text="장비 제어" Style="{StaticResource SectionTitleText}" />
+                    <Border Margin="0,16,0,0" Padding="12" CornerRadius="8" Background="{StaticResource BrushSurfaceSubtle}">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock Text="FOUP A/B" Style="{StaticResource BodyStrongText}" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding FoupReadyText}" Tone="{Binding FoupReadyTone}" Width="92" HorizontalAlignment="Right" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding FoupReadyDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
+                            <Border Height="1" Margin="0,10,0,10" Background="{StaticResource BrushBorder}" />
+                            <DockPanel>
+                                <TextBlock Text="공정 상태" Style="{StaticResource BodyStrongText}" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ProcessRunStateText}" Tone="{Binding ProcessRunStateTone}" Width="82" HorizontalAlignment="Right" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding ProcessRunDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Button Content="DI1 - 공정 시작" Command="{Binding ProcessStartCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,14,0,0" />
                     <Button Content="DI2 - 공정 정지" Command="{Binding ProcessStopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
                     <Border Height="1" Margin="0,16,0,14" Background="{StaticResource BrushBorder}" />
                     <DockPanel>
-                        <TextBlock Text="AI Control" Style="{StaticResource BodyStrongText}" />
+                        <TextBlock Text="AI 제어" Style="{StaticResource BodyStrongText}" />
                         <controls:StatusBadge DockPanel.Dock="Right"
                                               Text="{Binding AiControlAccessText}"
                                               Tone="{Binding AiControlAccessTone}"
                                               Width="126"
                                               HorizontalAlignment="Right" />
                     </DockPanel>
+                    <Border Margin="0,12,0,0" Padding="12" CornerRadius="8" Background="{StaticResource BrushSurfaceSubtle}">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock Text="AI 상태" Style="{StaticResource BodyStrongText}" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding AiRunStateText}" Tone="{Binding AiRunStateTone}" Width="82" HorizontalAlignment="Right" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding AiRunDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                     <Button Content="DI3 - AI 제어 시작" Command="{Binding AiControlStartCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,12,0,0" />
                     <Button Content="DI4 - AI 제어 정지" Command="{Binding AiControlStopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
                     <Border Margin="0,16,0,0" Padding="14" CornerRadius="8" Background="{StaticResource BrushDangerSoft}" BorderBrush="#F2B8B5" BorderThickness="1">
                         <StackPanel>
                             <DockPanel>
-                                <TextBlock Text="Emergency" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
-                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ForceShutdownAccessText}" Tone="{Binding ForceShutdownAccessTone}" />
+                                <TextBlock Text="비상 정지" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ForceShutdownAccessText}" Tone="{Binding ForceShutdownAccessTone}" Width="72" HorizontalAlignment="Right" />
                             </DockPanel>
-                            <Button Content="FORCE SHUTDOWN" Command="{Binding ForceShutdownCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
-                            <TextBlock Text="관리자 또는 AI 위험 조건에서만 실행됩니다."
-                                       Margin="0,8,0,0"
-                                       Style="{StaticResource CaptionText}" />
+                            <Button Content="강제 정지" Command="{Binding ForceShutdownCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
+                            <TextBlock Text="관리자 권한 또는 AI 위험 조건에서만 실행됩니다." Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                     <Border Height="1" Margin="0,16,0,14" Background="{StaticResource BrushBorder}" />
-                    <TextBlock Text="AI Risk Rule: Detect / Warn / Stop" Style="{StaticResource BodyStrongText}" />
+                    <TextBlock Text="AI 위험 규칙: 감지 / 경고 / 정지" Style="{StaticResource BodyStrongText}" />
                     <Border Margin="0,14,0,0" Height="92" CornerRadius="6" Background="{StaticResource BrushSurfaceSubtle}" Padding="12">
                         <StackPanel>
                             <DockPanel>
-                                <TextBlock Text="Sensor Risk" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
+                                <TextBlock Text="센서 위험" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
                                 <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding RiskStatusText}" Tone="{Binding RiskStatusTone}" />
                             </DockPanel>
                             <TextBlock Text="{Binding RiskDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />

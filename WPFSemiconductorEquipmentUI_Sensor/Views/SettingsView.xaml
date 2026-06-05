@@ -11,12 +11,12 @@
     <StackPanel>
         <DockPanel>
             <StackPanel Margin="0,0,10,0">
-                <TextBlock Text="System Settings" Style="{StaticResource PageTitleText}" />
-                <TextBlock Text="Connection, access, risk rules, and storage policy." Style="{StaticResource BodyText}" />
+                <TextBlock Text="시스템 설정" Style="{StaticResource PageTitleText}" />
+                <TextBlock Text="연결, 인증, 위험 규칙, 저장 정책을 설정합니다." Style="{StaticResource BodyText}" />
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" >
-                <controls:StatusBadge Text="ADMIN ONLY" Tone="Danger" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="SAFE DEFAULTS" Tone="Normal" Margin="0,0,8,0" />
+                <controls:StatusBadge Text="관리자 전용" Tone="Danger" Margin="0,0,8,0" />
+                <controls:StatusBadge Text="안전 기본값" Tone="Normal" Margin="0,0,8,0" />
                 <controls:StatusBadge Text="{Binding SettingsStatusText}" Tone="{Binding SettingsStatusTone}" />
             </StackPanel>
         </DockPanel>
@@ -28,8 +28,8 @@
                 BorderThickness="1"
                 Padding="16">
             <DockPanel>
-                <controls:StatusBadge Text="CAUTION" Tone="Warning" Margin="0,0,14,0" />
-                <TextBlock Text="Review risk thresholds and shutdown policy before saving."
+                <controls:StatusBadge Text="주의" Tone="Warning" Margin="0,0,14,0" />
+                <TextBlock Text="저장 전 위험 임계값과 정지 정책을 확인하세요."
                            Style="{StaticResource BodyStrongText}"
                            TextWrapping="Wrap" />
             </DockPanel>
@@ -46,8 +46,8 @@
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12">
                     <StackPanel>
                         <DockPanel LastChildFill="False">
-                            <TextBlock Text="Connection" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="ONLINE" Tone="Normal" />
+                            <TextBlock Text="연결 설정" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="온라인" Tone="Normal" />
                         </DockPanel>
 
                         <Grid Margin="0,12,0,0">
@@ -55,15 +55,15 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="EtherCAT connection" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <controls:StatusBadge Grid.Column="1" Text="READY" Tone="Normal" HorizontalAlignment="Right" />
+                            <TextBlock Text="EtherCAT 연결" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <controls:StatusBadge Grid.Column="1" Text="준비" Tone="Normal" HorizontalAlignment="Right" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Equipment ID" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="장비 ID" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="EQP-TRAINER-01" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -71,7 +71,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="SQLite DB path" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="SQLite DB 경로" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding DatabasePath, Mode=OneWay}" IsReadOnly="True" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -87,7 +87,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Sensor save interval" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="센서 저장 간격" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                     </StackPanel>
@@ -96,8 +96,8 @@
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
                     <StackPanel>
                         <DockPanel LastChildFill="False">
-                            <TextBlock Text="Authentication" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="APPROVAL REQUIRED" Tone="Warning" />
+                            <TextBlock Text="인증 설정" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="승인 필요" Tone="Warning" />
                         </DockPanel>
 
                         <Grid Margin="0,12,0,0">
@@ -105,7 +105,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Approved users only" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="승인 사용자만 허용" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -113,7 +113,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Block Pending accounts" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="승인 대기 계정 차단" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -121,16 +121,16 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Session timeout" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="15 min" />
+                            <TextBlock Text="세션 만료" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="15분" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Control role" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="Operator Level 1" />
+                            <TextBlock Text="제어 권한" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="작업자 1단계" />
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -140,8 +140,8 @@
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12">
                     <StackPanel>
                         <DockPanel LastChildFill="False">
-                            <TextBlock Text="AI Risk Rule" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="WATCH ACTIVE" Tone="Warning" />
+                            <TextBlock Text="AI 위험 규칙" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="감시 중" Tone="Warning" />
                         </DockPanel>
 
                         <Grid Margin="0,12,0,0">
@@ -149,7 +149,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Pressure warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="압력 경고 기준" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding PressureWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -157,7 +157,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Temperature warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="온도 경고 기준" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding TemperatureWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -165,7 +165,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Vibration warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="진동 경고 기준" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding VibrationWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -173,7 +173,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Humidity warning" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="습도 경고 기준" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding HumidityWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -181,12 +181,12 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Auto shutdown condition" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="자동 정지 조건" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <TextBox Width="58" Text="{Binding AutoShutdownWarningLimit, UpdateSourceTrigger=PropertyChanged}" />
                                 <TextBlock Text=" / " VerticalAlignment="Center" Style="{StaticResource CaptionText}" />
                                 <TextBox Width="58" Text="{Binding RiskWindowSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Text=" sec" VerticalAlignment="Center" Style="{StaticResource CaptionText}" />
+                                <TextBlock Text=" 초" VerticalAlignment="Center" Style="{StaticResource CaptionText}" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -195,8 +195,8 @@
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
                     <StackPanel>
                         <DockPanel LastChildFill="False">
-                            <TextBlock Text="Shutdown Policy" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="PROTECTED" Tone="Danger" />
+                            <TextBlock Text="정지 정책" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="보호됨" Tone="Danger" />
                         </DockPanel>
 
                         <Grid Margin="0,12,0,0">
@@ -204,7 +204,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Force Shutdown enabled" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="강제 정지 활성화" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -212,7 +212,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="64" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Require admin confirm" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="관리자 확인 필요" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <ToggleButton Grid.Column="1" Style="{StaticResource SwitchToggleStyle}" IsChecked="True" HorizontalAlignment="Right" />
                         </Grid>
                     </StackPanel>
@@ -221,8 +221,8 @@
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
                     <StackPanel>
                         <DockPanel LastChildFill="False">
-                            <TextBlock Text="Storage" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="BACKUP OK" Tone="Normal" />
+                            <TextBlock Text="저장 설정" Style="{StaticResource SectionTitleText}" />
+                            <controls:StatusBadge DockPanel.Dock="Right" Text="저장 가능" Tone="Normal" />
                         </DockPanel>
 
                         <Grid Margin="0,12,0,0">
@@ -230,15 +230,15 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Log retention" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="90 days" />
+                            <TextBlock Text="로그 보관 기간" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="1" Text="90일" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Sensor save rate" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="센서 저장 주기" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                     </StackPanel>
@@ -246,9 +246,9 @@
 
                 <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="SAVE" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
-                        <Button Content="RESET" Command="{Binding ResetCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
-                        <Button Content="TEST" Command="{Binding TestCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        <Button Content="저장" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
+                        <Button Content="초기화" Command="{Binding ResetCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        <Button Content="테스트" Command="{Binding TestCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
                     </StackPanel>
                 </Border>
             </StackPanel>
