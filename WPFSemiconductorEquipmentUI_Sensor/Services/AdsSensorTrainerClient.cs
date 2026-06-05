@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using TwinCAT.Ads;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.Services
@@ -66,7 +67,35 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
         public void SetRunningLamp(bool isOn)
         {
             ThrowIfDisposed();
+            SetDigitalOutputBit(0, isOn);
+        }
 
+        public void PulseDigitalOutput(int bitIndex, int durationMilliseconds)
+        {
+            ThrowIfDisposed();
+
+            if (bitIndex < 1 || bitIndex > 15)
+            {
+                throw new ArgumentOutOfRangeException("bitIndex", "Command output bits must be between 1 and 15. Bit 0 is reserved for the running lamp.");
+            }
+
+            if (durationMilliseconds < 1 || durationMilliseconds > 5000)
+            {
+                throw new ArgumentOutOfRangeException("durationMilliseconds", "Pulse duration must be between 1 and 5000 milliseconds.");
+            }
+
+            SetDigitalOutputBit(bitIndex, true);
+            Thread.Sleep(durationMilliseconds);
+            SetDigitalOutputBit(bitIndex, false);
+        }
+
+        public void Dispose()
+        {
+            _disposed = true;
+        }
+
+        private void SetDigitalOutputBit(int bitIndex, bool isOn)
+        {
             using (var adsClient = new TcAdsClient())
             {
                 var digitalOutputHandle = 0;
@@ -80,11 +109,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                     var rawOutput = (DigitalOutputRaw)adsClient.ReadAny(digitalOutputHandle, typeof(DigitalOutputRaw));
                     if (isOn)
                     {
-                        rawOutput.Bits = (ushort)(rawOutput.Bits | (1 << 0));
+                        rawOutput.Bits = (ushort)(rawOutput.Bits | (1 << bitIndex));
                     }
                     else
                     {
-                        rawOutput.Bits = (ushort)(rawOutput.Bits & ~(1 << 0));
+                        rawOutput.Bits = (ushort)(rawOutput.Bits & ~(1 << bitIndex));
                     }
 
                     adsClient.WriteAny(digitalOutputHandle, rawOutput);
@@ -94,11 +123,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                     TryDeleteHandle(adsClient, digitalOutputHandle);
                 }
             }
-        }
-
-        public void Dispose()
-        {
-            _disposed = true;
         }
 
         private static bool IsBitSet(ushort value, int bit)

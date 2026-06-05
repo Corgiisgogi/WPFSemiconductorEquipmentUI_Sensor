@@ -11,7 +11,7 @@
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                 <controls:StatusBadge Text="{Binding ConnectionStatusText}" Tone="{Binding ConnectionStatusTone}" Margin="0,0,8,0" />
                 <controls:StatusBadge Text="{Binding LastUpdateText}" Tone="Blue" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="AI WATCH" Tone="Warning" />
+                <controls:StatusBadge Text="{Binding RiskStatusText}" Tone="{Binding RiskStatusTone}" />
             </StackPanel>
         </DockPanel>
 
@@ -45,17 +45,17 @@
             <Border Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="Operator &amp; System" Style="{StaticResource SectionTitleText}" />
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="User State" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="APPROVED" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,22,0,0"><TextBlock Text="Role" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="Operator" Tone="Blue" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="User State" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.UserStateText}" Tone="{Binding Session.UserStateTone}" Width="100" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,22,0,0"><TextBlock Text="Role" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding Session.RoleText}" Tone="Blue" Width="100" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,22,0,0"><TextBlock Text="DB" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="CONNECTED" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,22,0,0"><TextBlock Text="EtherCAT" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding EtherCatStatusText}" Tone="{Binding EtherCatStatusTone}" Width="112" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,22,0,0"><TextBlock Text="Control" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="ENABLED" Tone="Normal" Width="100" HorizontalAlignment="Right" /></DockPanel>
                     <Border Height="1" Margin="0,24,0,14" Background="{StaticResource BrushBorder}" />
                     <TextBlock Text="Digital Inputs" Style="{StaticResource SectionTitleText}" />
-                    <DockPanel Margin="0,14,0,0"><TextBlock Text="DI 1" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput1Text}" Tone="{Binding DigitalInput1Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI 2" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput2Text}" Tone="{Binding DigitalInput2Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI 3" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput3Text}" Tone="{Binding DigitalInput3Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
-                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI 4" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput4Text}" Tone="{Binding DigitalInput4Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,14,0,0"><TextBlock Text="DI1 공정 시작" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput1Text}" Tone="{Binding DigitalInput1Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI2 공정 정지" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput2Text}" Tone="{Binding DigitalInput2Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI3 AI 시작" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput3Text}" Tone="{Binding DigitalInput3Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
+                    <DockPanel Margin="0,10,0,0"><TextBlock Text="DI4 AI 정지" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding DigitalInput4Text}" Tone="{Binding DigitalInput4Tone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,10,0,0"><TextBlock Text="Optical" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding OpticalSensorText}" Tone="{Binding OpticalSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                     <DockPanel Margin="0,10,0,0"><TextBlock Text="Inductive" Style="{StaticResource BodyStrongText}" /><controls:StatusBadge DockPanel.Dock="Right" Text="{Binding InductiveSensorText}" Tone="{Binding InductiveSensorTone}" Width="72" HorizontalAlignment="Right" /></DockPanel>
                 </StackPanel>
@@ -116,14 +116,27 @@
             <Border Grid.Column="4" Style="{StaticResource CardBorderStyle}">
                 <StackPanel>
                     <TextBlock Text="Equipment Control" Style="{StaticResource SectionTitleText}" />
-                    <Button Content="START" Style="{StaticResource PrimaryButtonStyle}" Margin="0,18,0,0" />
-                    <Button Content="STOP" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
-                    <Button Content="LOCKED" Style="{StaticResource DisabledButtonStyle}" Margin="0,12,0,0" />
+                    <Button Content="DI1 - 공정 시작" Command="{Binding ProcessStartCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,18,0,0" />
+                    <Button Content="DI2 - 공정 정지" Command="{Binding ProcessStopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
+                    <Border Height="1" Margin="0,16,0,14" Background="{StaticResource BrushBorder}" />
+                    <DockPanel>
+                        <TextBlock Text="AI Control" Style="{StaticResource BodyStrongText}" />
+                        <controls:StatusBadge DockPanel.Dock="Right"
+                                              Text="{Binding AiControlAccessText}"
+                                              Tone="{Binding AiControlAccessTone}"
+                                              Width="126"
+                                              HorizontalAlignment="Right" />
+                    </DockPanel>
+                    <Button Content="DI3 - AI 제어 시작" Command="{Binding AiControlStartCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,12,0,0" />
+                    <Button Content="DI4 - AI 제어 정지" Command="{Binding AiControlStopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,12,0,0" />
                     <Border Margin="0,16,0,0" Padding="14" CornerRadius="8" Background="{StaticResource BrushDangerSoft}" BorderBrush="#F2B8B5" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="Emergency" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
-                            <Button Content="FORCE SHUTDOWN" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
-                            <TextBlock Text="Runs only for admin command or AI risk condition."
+                            <DockPanel>
+                                <TextBlock Text="Emergency" Foreground="{StaticResource BrushDanger}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ForceShutdownAccessText}" Tone="{Binding ForceShutdownAccessTone}" />
+                            </DockPanel>
+                            <Button Content="FORCE SHUTDOWN" Command="{Binding ForceShutdownCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,10,0,0" />
+                            <TextBlock Text="관리자 또는 AI 위험 조건에서만 실행됩니다."
                                        Margin="0,8,0,0"
                                        Style="{StaticResource CaptionText}" />
                         </StackPanel>
@@ -132,7 +145,11 @@
                     <TextBlock Text="AI Risk Rule: Detect / Warn / Stop" Style="{StaticResource BodyStrongText}" />
                     <Border Margin="0,14,0,0" Height="92" CornerRadius="6" Background="{StaticResource BrushSurfaceSubtle}" Padding="12">
                         <StackPanel>
-                            <TextBlock Text="Sensor Trend" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
+                            <DockPanel>
+                                <TextBlock Text="Sensor Risk" Style="{StaticResource CaptionText}" FontWeight="SemiBold" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding RiskStatusText}" Tone="{Binding RiskStatusTone}" />
+                            </DockPanel>
+                            <TextBlock Text="{Binding RiskDetailText}" Margin="0,8,0,0" Style="{StaticResource CaptionText}" TextWrapping="Wrap" />
                             <Rectangle Height="2" Margin="0,8,0,0" Fill="{StaticResource BrushWarning}" />
                         </StackPanel>
                     </Border>
