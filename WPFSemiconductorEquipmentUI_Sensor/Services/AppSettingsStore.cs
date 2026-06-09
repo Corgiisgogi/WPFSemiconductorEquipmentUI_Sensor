@@ -6,7 +6,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 {
     public sealed class AppSettingsStore : ViewModelBase
     {
-        public const double DefaultPressureWarningThreshold = 0.80d;
+        public const double DefaultPressureWarningThreshold = 0.40d;
         public const double DefaultTemperatureWarningThreshold = 40d;
         public const double DefaultVibrationWarningThreshold = 7d;
         public const double DefaultHumidityWarningThreshold = 80d;
@@ -86,7 +86,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 
         public void Load()
         {
-            PressureWarningThreshold = _repository == null ? DefaultPressureWarningThreshold : _repository.GetDouble("PressureWarningThreshold", DefaultPressureWarningThreshold);
+            PressureWarningThreshold = _repository == null ? DefaultPressureWarningThreshold : NormalizePressureThreshold(_repository.GetDouble("PressureWarningThreshold", DefaultPressureWarningThreshold));
             TemperatureWarningThreshold = _repository == null ? DefaultTemperatureWarningThreshold : _repository.GetDouble("TemperatureWarningThreshold", DefaultTemperatureWarningThreshold);
             VibrationWarningThreshold = _repository == null ? DefaultVibrationWarningThreshold : _repository.GetDouble("VibrationWarningThreshold", DefaultVibrationWarningThreshold);
             HumidityWarningThreshold = _repository == null ? DefaultHumidityWarningThreshold : _repository.GetDouble("HumidityWarningThreshold", DefaultHumidityWarningThreshold);
@@ -94,6 +94,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             AutoShutdownWarningLimit = _repository == null ? DefaultAutoShutdownWarningLimit : _repository.GetInt("AutoShutdownWarningLimit", DefaultAutoShutdownWarningLimit);
             SensorSnapshotSaveIntervalSeconds = _repository == null ? DefaultSensorSnapshotSaveIntervalSeconds : _repository.GetInt("SensorSnapshotSaveIntervalSeconds", DefaultSensorSnapshotSaveIntervalSeconds);
             ApiBaseUrl = _repository == null ? DefaultApiBaseUrl : _repository.GetValue("ApiBaseUrl", DefaultApiBaseUrl);
+        }
+
+        private static double NormalizePressureThreshold(double value)
+        {
+            if (value <= 0d || value > 0.45d)
+            {
+                return DefaultPressureWarningThreshold;
+            }
+
+            return value;
         }
 
         public void Save()

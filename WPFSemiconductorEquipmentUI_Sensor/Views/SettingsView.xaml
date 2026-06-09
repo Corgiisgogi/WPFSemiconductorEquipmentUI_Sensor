@@ -8,20 +8,30 @@
         </Style>
     </UserControl.Resources>
 
-    <StackPanel>
-        <DockPanel>
-            <StackPanel Margin="0,0,10,0">
-                <TextBlock Text="시스템 설정" Style="{StaticResource PageTitleText}" />
-                <TextBlock Text="연결, 인증, 위험 규칙, 저장 정책을 설정합니다." Style="{StaticResource BodyText}" />
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" >
-                <controls:StatusBadge Text="관리자 전용" Tone="Danger" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="안전 기본값" Tone="Normal" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="{Binding SettingsStatusText}" Tone="{Binding SettingsStatusTone}" />
-            </StackPanel>
-        </DockPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel>
+            <DockPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="시스템 설정" Style="{StaticResource PageTitleText}" />
+                    <TextBlock Text="연결, 인증, 위험 규칙, 저장 정책을 설정합니다." Style="{StaticResource BodyText}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <controls:StatusBadge Text="관리자 전용" Tone="Danger" Margin="0,0,8,0" />
+                    <controls:StatusBadge Text="안전 기본값" Tone="Normal" Margin="0,0,8,0" />
+                    <controls:StatusBadge Text="{Binding SettingsStatusText}" Tone="{Binding SettingsStatusTone}" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="10,10,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="저장" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
+                            <Button Content="초기화" Command="{Binding ResetCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                            <Button Content="테스트" Command="{Binding TestCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </DockPanel>
 
-        <Border Margin="0,16,0,0"
+            <Border Margin="0,16,0,0"
                 CornerRadius="8"
                 Background="{StaticResource BrushWarningSoft}"
                 BorderBrush="#E7C26A"
@@ -149,7 +159,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="190" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="압력 경고 기준" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                            <TextBlock Text="압력 경고 기준 (0~0.45 bar)" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
                             <TextBox Grid.Column="1" Text="{Binding PressureWarningThresholdText, UpdateSourceTrigger=PropertyChanged}" />
                         </Grid>
                         <Grid Margin="0,8,0,0">
@@ -218,40 +228,33 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
-                    <StackPanel>
-                        <DockPanel LastChildFill="False">
-                            <TextBlock Text="저장 설정" Style="{StaticResource SectionTitleText}" />
-                            <controls:StatusBadge DockPanel.Dock="Right" Text="저장 가능" Tone="Normal" />
-                        </DockPanel>
+                    <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
+                        <StackPanel>
+                            <DockPanel LastChildFill="False">
+                                <TextBlock Text="저장 설정" Style="{StaticResource SectionTitleText}" />
+                                <controls:StatusBadge DockPanel.Dock="Right" Text="저장 가능" Tone="Normal" />
+                            </DockPanel>
 
-                        <Grid Margin="0,12,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="190" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="로그 보관 기간" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="90일" />
-                        </Grid>
-                        <Grid Margin="0,8,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="190" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="센서 저장 주기" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource CardBorderStyle}" Padding="12" Margin="0,10,0,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="저장" Command="{Binding SaveCommand}" Style="{StaticResource PrimaryButtonStyle}" Width="132" MinWidth="0" />
-                        <Button Content="초기화" Command="{Binding ResetCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
-                        <Button Content="테스트" Command="{Binding TestCommand}" Style="{StaticResource CompactButtonStyle}" Width="112" Margin="10,0,0,0" />
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="190" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="로그 보관 기간" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="90일" />
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="190" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="센서 저장 주기" Style="{StaticResource BodyStrongText}" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding SensorSnapshotSaveIntervalSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
         </Grid>
-    </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
 </UserControl>

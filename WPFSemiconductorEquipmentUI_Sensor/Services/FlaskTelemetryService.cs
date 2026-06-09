@@ -10,8 +10,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 {
     public sealed class FlaskTelemetryService : IRemoteTelemetryService
     {
+        private static readonly TimeSpan SensorPostInterval = TimeSpan.FromSeconds(1);
         private readonly AppSettingsStore _settings;
         private readonly JavaScriptSerializer _serializer;
+        private readonly object _sensorPostSync = new object();
+        private DateTime _lastSensorPostedAtUtc = DateTime.MinValue;
+        private bool _sensorPostInFlight;
 
         public FlaskTelemetryService(AppSettingsStore settings)
         {
@@ -26,9 +30,22 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                 return;
             }
 
-            PostInBackground(new
+            var nowUtc = DateTime.UtcNow;
+            lock (_sensorPostSync)
+            {
+                if (_sensorPostInFlight || (_lastSensorPostedAtUtc != DateTime.MinValue && nowUtc - _lastSensorPostedAtUtc < SensorPostInterval))
+                {
+                    return;
+                }
+
+                _lastSensorPostedAtUtc = nowUtc;
+                _sensorPostInFlight = true;
+            }
+
+            PostInBackground("/api/sensor", new
             {
                 type = "sensor",
+                created_at = nowUtc.ToString("o"),
                 capturedAt = snapshot.CapturedAt.ToString("o"),
                 pressure = new { raw = snapshot.PressureRaw, value = snapshot.PressureValue, unit = "bar" },
                 vibration = new { raw = snapshot.VibrationRaw, value = snapshot.VibrationValue, unit = "level" },
@@ -43,7 +60,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                     optical = snapshot.OpticalSensor,
                     inductive = snapshot.InductiveSensor
                 }
-            });
+            }, true);
         }
 
         public void SendActivityLog(ActivityLogItem log)
@@ -53,7 +70,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                 return;
             }
 
-            PostInBackground(new
+            PostInBackground("/api/log", new
             {
                 type = "activity_log",
                 logId = log.Id,
@@ -67,22 +84,32 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             });
         }
 
-        private void PostInBackground(object payload)
+        private void PostInBackground(string path, object payload, bool isSensorPayload = false)
         {
             ThreadPool.QueueUserWorkItem(state =>
             {
                 try
                 {
-                    Post(payload);
+                    Post(path, payload);
                 }
                 catch
                 {
                     // Telemetry must not interrupt equipment UI polling or command handling.
                 }
+                finally
+                {
+                    if (isSensorPayload)
+                    {
+                        lock (_sensorPostSync)
+                        {
+                            _sensorPostInFlight = false;
+                        }
+                    }
+                }
             });
         }
 
-        private void Post(object payload)
+        private void Post(string path, object payload)
         {
             var baseUrl = (_settings.ApiBaseUrl ?? string.Empty).Trim().TrimEnd('/');
             if (string.IsNullOrWhiteSpace(baseUrl))
@@ -90,7 +117,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                 baseUrl = AppSettingsStore.DefaultApiBaseUrl;
             }
 
-            var request = (HttpWebRequest)WebRequest.Create(baseUrl + "/api/sensor");
+            var request = (HttpWebRequest)WebRequest.Create(baseUrl + path);
             request.Method = "POST";
             request.Accept = "application/json";
             request.ContentType = "application/json; charset=utf-8";

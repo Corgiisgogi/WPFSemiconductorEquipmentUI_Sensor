@@ -284,6 +284,190 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             private set { SetProperty(ref _etherCatStatusTone, value); }
         }
 
+        public string PressureDisplayText
+        {
+            get { return BuildSensorDisplayText(0); }
+        }
+
+        public string PressureRawText
+        {
+            get { return BuildSensorRangeText(0); }
+        }
+
+        public string PressureStatusText
+        {
+            get { return BuildSensorBadgeText(0); }
+        }
+
+        public string PressureStatusTone
+        {
+            get { return BuildSensorTone(0); }
+        }
+
+        public string VibrationDisplayText
+        {
+            get { return BuildSensorDisplayText(1); }
+        }
+
+        public string VibrationRawText
+        {
+            get { return BuildSensorRangeText(1); }
+        }
+
+        public string VibrationStatusText
+        {
+            get { return BuildSensorBadgeText(1); }
+        }
+
+        public string VibrationStatusTone
+        {
+            get { return BuildSensorTone(1); }
+        }
+
+        public string TemperatureDisplayText
+        {
+            get { return BuildSensorDisplayText(2); }
+        }
+
+        public string TemperatureRawText
+        {
+            get { return BuildSensorRangeText(2); }
+        }
+
+        public string TemperatureStatusText
+        {
+            get { return BuildSensorBadgeText(2); }
+        }
+
+        public string TemperatureStatusTone
+        {
+            get { return BuildSensorTone(2); }
+        }
+
+        public string HumidityDisplayText
+        {
+            get { return BuildSensorDisplayText(3); }
+        }
+
+        public string HumidityRawText
+        {
+            get { return BuildSensorRangeText(3); }
+        }
+
+        public string HumidityStatusText
+        {
+            get { return BuildSensorBadgeText(3); }
+        }
+
+        public string HumidityStatusTone
+        {
+            get { return BuildSensorTone(3); }
+        }
+
+        public string EquipmentStateText
+        {
+            get
+            {
+                if (string.Equals(RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "DANGER";
+                }
+
+                if (string.Equals(RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "WARNING";
+                }
+
+                if (_isProcessRunning)
+                {
+                    return "RUNNING";
+                }
+
+                return IsFoupReady ? "READY" : "IDLE";
+            }
+        }
+
+        public string EquipmentStateTone
+        {
+            get
+            {
+                if (string.Equals(RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Danger";
+                }
+
+                if (string.Equals(RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Warning";
+                }
+
+                if (_isProcessRunning || IsFoupReady)
+                {
+                    return "Normal";
+                }
+
+                return "Disabled";
+            }
+        }
+
+        public string FoupAStateText
+        {
+            get { return _isOpticalSensorOn ? "도킹" : "대기"; }
+        }
+
+        public string FoupAStateTone
+        {
+            get { return _isOpticalSensorOn ? "Normal" : "Disabled"; }
+        }
+
+        public string FoupBStateText
+        {
+            get { return _isInductiveSensorOn ? "도킹" : "대기"; }
+        }
+
+        public string FoupBStateTone
+        {
+            get { return _isInductiveSensorOn ? "Normal" : "Disabled"; }
+        }
+
+        public string Do2LampText
+        {
+            get { return _isProcessRunning ? "ON" : "OFF"; }
+        }
+
+        public string Do2LampTone
+        {
+            get { return _isProcessRunning ? "Normal" : "Disabled"; }
+        }
+
+        public string Do3LampText
+        {
+            get { return string.Equals(RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase) || string.Equals(RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase) ? "ON" : "OFF"; }
+        }
+
+        public string Do3LampTone
+        {
+            get
+            {
+                if (string.Equals(RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Danger";
+                }
+
+                return string.Equals(RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase) ? "Warning" : "Disabled";
+            }
+        }
+
+        public string Do4LampText
+        {
+            get { return _isAiControlRunning ? "ON" : "OFF"; }
+        }
+
+        public string Do4LampTone
+        {
+            get { return _isAiControlRunning ? "Blue" : "Disabled"; }
+        }
+
         public string SummaryBadgeText
         {
             get { return _summaryBadgeText; }
@@ -472,6 +656,84 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             TrySetStatusLamp(WarningLampBit, isOn);
         }
 
+        private string BuildSensorDisplayText(int index)
+        {
+            if (Sensors == null || index < 0 || index >= Sensors.Count)
+            {
+                return "--";
+            }
+
+            var sensor = Sensors[index];
+            return sensor.Value + " " + sensor.Unit;
+        }
+
+        private string BuildSensorRangeText(int index)
+        {
+            if (Sensors == null || index < 0 || index >= Sensors.Count)
+            {
+                return "Raw: --";
+            }
+
+            return Sensors[index].RangeText;
+        }
+
+        private string BuildSensorBadgeText(int index)
+        {
+            if (Sensors == null || index < 0 || index >= Sensors.Count)
+            {
+                return "--";
+            }
+
+            return Sensors[index].BadgeText;
+        }
+
+        private string BuildSensorTone(int index)
+        {
+            if (Sensors == null || index < 0 || index >= Sensors.Count)
+            {
+                return "Disabled";
+            }
+
+            return Sensors[index].Tone;
+        }
+
+        private void NotifySensorDisplayChanged()
+        {
+            OnPropertyChanged("PressureDisplayText");
+            OnPropertyChanged("PressureRawText");
+            OnPropertyChanged("PressureStatusText");
+            OnPropertyChanged("PressureStatusTone");
+            OnPropertyChanged("VibrationDisplayText");
+            OnPropertyChanged("VibrationRawText");
+            OnPropertyChanged("VibrationStatusText");
+            OnPropertyChanged("VibrationStatusTone");
+            OnPropertyChanged("TemperatureDisplayText");
+            OnPropertyChanged("TemperatureRawText");
+            OnPropertyChanged("TemperatureStatusText");
+            OnPropertyChanged("TemperatureStatusTone");
+            OnPropertyChanged("HumidityDisplayText");
+            OnPropertyChanged("HumidityRawText");
+            OnPropertyChanged("HumidityStatusText");
+            OnPropertyChanged("HumidityStatusTone");
+            NotifyDashboardStateChanged();
+        }
+
+        private void NotifyDashboardStateChanged()
+        {
+            OnPropertyChanged("EquipmentStateText");
+            OnPropertyChanged("EquipmentStateTone");
+            OnPropertyChanged("FoupAStateText");
+            OnPropertyChanged("FoupAStateTone");
+            OnPropertyChanged("FoupBStateText");
+            OnPropertyChanged("FoupBStateTone");
+            OnPropertyChanged("Do2LampText");
+            OnPropertyChanged("Do2LampTone");
+            OnPropertyChanged("Do3LampText");
+            OnPropertyChanged("Do3LampTone");
+            OnPropertyChanged("Do4LampText");
+            OnPropertyChanged("Do4LampTone");
+        }
+
         private bool CanExecuteApprovedCommand()
         {
             return !_disposed && _session.IsApproved;
@@ -551,6 +813,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             NotifyProcessStateChanged();
             NotifyAiStateChanged();
             SyncWarningLamp(true);
+            NotifyDashboardStateChanged();
             AddActivityLog(automatic ? "AI 규칙" : "제어", automatic ? "자동 강제 정지 이벤트 발생" : "강제 정지 이벤트 발생", "RISK");
             SummaryBadgeText = automatic ? "자동 정지" : "강제 정지";
             SummaryTone = "Danger";
@@ -654,6 +917,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             OnPropertyChanged("ProcessRunStateText");
             OnPropertyChanged("ProcessRunStateTone");
             OnPropertyChanged("ProcessRunDetailText");
+            NotifyDashboardStateChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -663,6 +927,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             OnPropertyChanged("AiRunStateText");
             OnPropertyChanged("AiRunStateTone");
             OnPropertyChanged("AiRunDetailText");
+            NotifyDashboardStateChanged();
             CommandManager.InvalidateRequerySuggested();
         }
 
@@ -771,10 +1036,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 0.45d);
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            NotifySensorDisplayChanged();
 
             SetDigitalInputs(
                 snapshot.DigitalInput1,
@@ -810,7 +1076,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 1d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 0.45d);
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
@@ -818,6 +1084,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SetSensorStale(Sensors[1]);
             SetSensorStale(Sensors[2]);
             SetSensorStale(Sensors[3]);
+            NotifySensorDisplayChanged();
 
             SetDigitalInputs(
                 snapshot.DigitalInput1,
@@ -914,6 +1181,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             EtherCatStatusTone = "Danger";
             RiskStatusText = "AI 일시정지";
             RiskStatusTone = "Disabled";
+            SyncWarningLamp(false);
+            NotifyDashboardStateChanged();
             RiskDetailText = "ADS 읽기 실패. 다음 정상 센서 스냅샷까지 위험 규칙을 대기합니다.";
             SummaryBadgeText = "읽기 오류";
             SummaryTone = "Danger";
@@ -963,6 +1232,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 RiskStatusText = "AI 정상";
                 RiskStatusTone = "Normal";
                 SyncWarningLamp(false);
+                NotifyDashboardStateChanged();
                 RiskDetailText = "위험 기준 초과 없음.";
                 NotifyForceShutdownStateChanged();
                 return;
@@ -986,6 +1256,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             RiskStatusText = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "AI 위험" : "AI 경고";
             RiskStatusTone = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "Danger" : "Warning";
             SyncWarningLamp(true);
+            NotifyDashboardStateChanged();
             RiskDetailText = details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit;
             NotifyForceShutdownStateChanged();
 
@@ -1092,6 +1363,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 OnPropertyChanged("FoupReadyTone");
                 OnPropertyChanged("FoupReadyDetailText");
                 OnPropertyChanged("ProcessRunDetailText");
+                NotifyDashboardStateChanged();
                 CommandManager.InvalidateRequerySuggested();
             }
 

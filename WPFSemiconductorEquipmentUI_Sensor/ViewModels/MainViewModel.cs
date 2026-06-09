@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
+using System.Windows.Threading;
 using WPFSemiconductorEquipmentUI_Sensor.Models;
 using WPFSemiconductorEquipmentUI_Sensor.Services;
 
@@ -15,6 +16,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private object _currentViewModel;
         private NavigationItem _authNavigationItem;
         private NavigationItem _settingsNavigationItem;
+        private ConsoleViewModel _consoleViewModel;
+        private readonly DispatcherTimer _clockTimer;
+        private string _currentTimeText;
         private bool _disposed;
 
         public MainViewModel()
@@ -32,13 +36,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var activityLogStore = new ActivityLogStore(activityLogRepository, remoteTelemetryService);
             var auth = new LoginViewModel(Session, authService);
             var console = new ConsoleViewModel(Session, activityLogStore, sensorSnapshotRepository, appSettingsStore, remoteTelemetryService);
+            _consoleViewModel = console;
+            _consoleViewModel.PropertyChanged += OnConsolePropertyChanged;
             var logs = new LogsViewModel(activityLogStore, activityLogRepository, sensorSnapshotRepository);
             var settings = new SettingsViewModel(appSettingsStore, databaseService);
 
-            _authNavigationItem = new NavigationItem { Title = "인증", ViewModel = auth, IsSelected = true };
+            _authNavigationItem = new NavigationItem { Title = "AUTH", ViewModel = auth };
             _settingsNavigationItem = new NavigationItem
             {
-                Title = AllowSettingsWithoutAdminForApiSetup ? "설정(테스트)" : "설정",
+                Title = "SETTINGS",
                 ViewModel = settings,
                 RequiresAdmin = !AllowSettingsWithoutAdminForApiSetup,
                 IsVisible = AllowSettingsWithoutAdminForApiSetup || Session.IsAdmin
@@ -46,15 +52,19 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             NavigationItems = new ObservableCollection<NavigationItem>
             {
+                new NavigationItem { Title = "MAIN", ViewModel = console, IsSelected = true },
                 _authNavigationItem,
-                new NavigationItem { Title = "콘솔", ViewModel = console },
-                new NavigationItem { Title = "로그", ViewModel = logs },
+                new NavigationItem { Title = "LOG", ViewModel = logs },
                 _settingsNavigationItem
             };
 
             PendingViewModel = new PendingViewModel();
-            CurrentViewModel = auth;
+            CurrentViewModel = console;
             NavigateCommand = new RelayCommand(Navigate);
+            CurrentTimeText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _clockTimer.Tick += OnClockTimerTick;
+            _clockTimer.Start();
             Session.PropertyChanged += OnSessionPropertyChanged;
             UpdateAdminNavigationAccess();
         }
@@ -64,6 +74,67 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public ICommand NavigateCommand { get; private set; }
         public UserSession Session { get; private set; }
 
+        public string CurrentTimeText
+        {
+            get { return _currentTimeText; }
+            private set
+            {
+                if (_currentTimeText == value)
+                {
+                    return;
+                }
+
+                _currentTimeText = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string AlertSummaryText
+        {
+            get
+            {
+                if (_consoleViewModel == null)
+                {
+                    return "경고 0";
+                }
+
+                if (string.Equals(_consoleViewModel.RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "위험 1";
+                }
+
+                if (string.Equals(_consoleViewModel.RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "경고 1";
+                }
+
+                return "경고 0";
+            }
+        }
+
+        public string AlertSummaryTone
+        {
+            get
+            {
+                if (_consoleViewModel == null)
+                {
+                    return "Normal";
+                }
+
+                if (string.Equals(_consoleViewModel.RiskStatusTone, "Danger", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Danger";
+                }
+
+                if (string.Equals(_consoleViewModel.RiskStatusTone, "Warning", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "Warning";
+                }
+
+                return "Normal";
+            }
+        }
+
         public object CurrentViewModel
         {
             get { return _currentViewModel; }
@@ -72,6 +143,20 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 _currentViewModel = value;
                 OnPropertyChanged();
             }
+        }
+
+        private void OnConsolePropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "RiskStatusText" || e.PropertyName == "RiskStatusTone")
+            {
+                OnPropertyChanged("AlertSummaryText");
+                OnPropertyChanged("AlertSummaryTone");
+            }
+        }
+
+        private void OnClockTimerTick(object sender, EventArgs e)
+        {
+            CurrentTimeText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         private void Navigate(object parameter)
@@ -148,6 +233,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             Session.PropertyChanged -= OnSessionPropertyChanged;
+            if (_consoleViewModel != null)
+            {
+                _consoleViewModel.PropertyChanged -= OnConsolePropertyChanged;
+            }
+
+            if (_clockTimer != null)
+            {
+                _clockTimer.Stop();
+                _clockTimer.Tick -= OnClockTimerTick;
+            }
 
             foreach (var item in NavigationItems)
             {
