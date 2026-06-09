@@ -609,13 +609,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 OnPropertyChanged("AiControlAccessText");
                 OnPropertyChanged("AiControlAccessTone");
-                if (!_session.IsApproved)
-                {
-                    _isProcessRunning = false;
-                    _isAiControlRunning = false;
-                    NotifyProcessStateChanged();
-                    NotifyAiStateChanged();
-                }
+
+                // 로그아웃(미승인 전이) 시 진행 중인 공정/AI 제어와 램프는 그대로 유지한다.
+                // 권한 변화는 새 제어 명령의 허용 여부(CanExecute)에만 영향을 주고, 이미 동작 중인
+                // 공정을 강제로 끄지는 않는다.
 
                 OnPropertyChanged("ForceShutdownAccessText");
                 OnPropertyChanged("ForceShutdownAccessTone");
@@ -796,16 +793,21 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         private void ExecuteForceShutdown(bool automatic)
         {
-            if (!automatic && !_session.IsAdmin && !_forceShutdownAllowedByRisk)
+            // AI 위험 조건이 활성(_forceShutdownAllowedByRisk)이면 admin/승인 로그인 여부와 무관하게
+            // 비로그인 상태에서도 수동 강제 정지를 허용한다. 위험이 아닐 때만 기존 권한(admin+승인)을 요구한다.
+            if (!automatic && !_forceShutdownAllowedByRisk)
             {
-                AddActivityLog("제어", "강제 정지 차단 - 관리자 또는 AI 위험 조건 필요", "RISK");
-                return;
-            }
+                if (!_session.IsAdmin)
+                {
+                    AddActivityLog("제어", "강제 정지 차단 - 관리자 또는 AI 위험 조건 필요", "RISK");
+                    return;
+                }
 
-            if (!automatic && !_session.IsApproved)
-            {
-                AddActivityLog("제어", "강제 정지 차단 - 승인된 로그인 필요", "RISK");
-                return;
+                if (!_session.IsApproved)
+                {
+                    AddActivityLog("제어", "강제 정지 차단 - 승인된 로그인 필요", "RISK");
+                    return;
+                }
             }
 
             _isProcessRunning = false;
@@ -1222,32 +1224,50 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 SetSensorWarning(Sensors[3]);
             }
 
-            if (warningCount == 0)
+            var now = DateTime.Now;
+
+            // 윈도우 만료 검사는 정상/경고 두 경로 모두에서 선행 수행한다. 만료 시에만 누적 카운트와
+            // 자동 종료 발동 플래그를 리셋해, 윈도우가 살아있는 동안에는 별개 경고 이벤트가 누적되도록 한다.
+            if (_riskWindowStartedAt != DateTime.MinValue && (now - _riskWindowStartedAt).TotalSeconds > _settings.RiskWindowSeconds)
             {
                 _riskWarningCount = 0;
                 _riskWindowStartedAt = DateTime.MinValue;
-                _wasRiskWarningActive = false;
                 _autoShutdownIssued = false;
+            }
+
+            if (warningCount == 0)
+            {
+                // 현재 위험 표시만 해제하고 카운트/윈도우는 유지한다. 윈도우 내에 다시 경고가 발생하면
+                // 별개 이벤트로 누적되어야 자동 종료(예: 60초 내 2회)가 가능하다.
+                _wasRiskWarningActive = false;
                 _forceShutdownAllowedByRisk = false;
                 RiskStatusText = "AI 정상";
                 RiskStatusTone = "Normal";
                 SyncWarningLamp(false);
                 NotifyDashboardStateChanged();
-                RiskDetailText = "위험 기준 초과 없음.";
+                if (_riskWarningCount > 0 && _riskWindowStartedAt != DateTime.MinValue)
+                {
+                    RiskDetailText = "위험 기준 초과 없음. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit + " 유지 중.";
+                }
+                else
+                {
+                    RiskDetailText = "위험 기준 초과 없음.";
+                }
+
                 NotifyForceShutdownStateChanged();
                 return;
             }
 
-            var now = DateTime.Now;
-            if (_riskWindowStartedAt == DateTime.MinValue || (now - _riskWindowStartedAt).TotalSeconds > _settings.RiskWindowSeconds)
+            if (_riskWindowStartedAt == DateTime.MinValue)
             {
                 _riskWindowStartedAt = now;
-                _riskWarningCount = 0;
             }
 
+            // 경고 "진입"(정상→경고 전이)일 때만 1회로 센다. 동시에 여러 센서가 초과해도 진입 1회이며,
+            // 경고가 여러 폴링에 걸쳐 지속돼도 중복 카운트하지 않는다.
             if (!_wasRiskWarningActive)
             {
-                _riskWarningCount += warningCount;
+                _riskWarningCount += 1;
                 AddActivityLog("AI 규칙", details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
             }
 
