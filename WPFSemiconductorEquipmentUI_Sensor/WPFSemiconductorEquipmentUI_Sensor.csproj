@@ -69,10 +69,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\SensorCard.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Controls\StatusBadge.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -116,9 +112,6 @@
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Controls\SensorCard.xaml.cs">
-      <DependentUpon>SensorCard.xaml</DependentUpon>
     </Compile>
     <Compile Include="Controls\StatusBadge.xaml.cs">
       <DependentUpon>StatusBadge.xaml</DependentUpon>

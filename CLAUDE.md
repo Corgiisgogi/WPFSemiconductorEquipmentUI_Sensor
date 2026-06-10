@@ -126,7 +126,18 @@ a classroom machine. Set it to `false` for real operation.
 - Old-style `csproj`: **new `.cs` files are not auto-included** — add a
   `<Compile Include="..." />` entry to `WPFSemiconductorEquipmentUI_Sensor.csproj`
   when creating a file.
-- ViewModels expose paired `*Text` / `*Tone` string properties; `*Tone`
-  ("Normal"/"Warning"/"Danger") drives `StatusBadge` coloring via converters.
+- **Status display — two patterns coexist (use the right one):**
+  - *Legacy (most of the app):* ViewModels expose paired `*Text` / `*Tone` string
+    properties; `*Tone` ("Normal"/"Warning"/"Danger"/"Blue"/"Disabled") is bound to
+    the reusable `StatusBadge` control, which maps it to colors in its code-behind.
+    These existing `*Tone`/`*Text` props (lamps, FOUP, DI, connection, risk, auth,
+    etc.) are intentionally kept as-is — do **not** bulk-convert them.
+  - *Preferred for new sensor/numeric status (reference: the sensor cells):* expose a
+    **domain enum** on the model (`Models/SensorStatus.cs`) and let the View map it
+    with converters in `Converters/` (`SensorStatusToToneConverter`,
+    `SensorStatusToBadgeTextConverter`, `SensorValueConverter`) — no display strings,
+    Korean text, or formatting in the ViewModel. See `Models/SensorMetric.cs` +
+    `Views/ConsoleView.xaml` (`Sensors[i]` bindings). Apply this pattern only when
+    adding/reworking such a display, not as a global migration.
 - Each VM has a parameterless/sample constructor chain feeding `SampleData` so the
   XAML designer renders without a DB or hardware — preserve these overloads.
