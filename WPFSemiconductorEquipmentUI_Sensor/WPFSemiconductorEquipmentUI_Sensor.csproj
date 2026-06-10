@@ -123,11 +123,15 @@
     <Compile Include="Controls\StatusBadge.xaml.cs">
       <DependentUpon>StatusBadge.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Converters\SensorStatusToToneConverter.cs" />
+    <Compile Include="Converters\SensorStatusToBadgeTextConverter.cs" />
+    <Compile Include="Converters\SensorValueConverter.cs" />
     <Compile Include="Models\ActivityLogItem.cs" />
     <Compile Include="Models\ActivityLogSummary.cs" />
     <Compile Include="Models\ActivityLogSearchCriteria.cs" />
     <Compile Include="Models\NavigationItem.cs" />
     <Compile Include="Models\SensorMetric.cs" />
+    <Compile Include="Models\SensorStatus.cs" />
     <Compile Include="Models\SensorSnapshotRecord.cs" />
     <Compile Include="Models\RegisterResult.cs" />
     <Compile Include="Models\AuthResult.cs" />

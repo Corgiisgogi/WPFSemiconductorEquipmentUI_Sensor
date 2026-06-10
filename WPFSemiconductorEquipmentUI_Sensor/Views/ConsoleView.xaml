@@ -1,7 +1,13 @@
 ﻿<UserControl x:Class="WPFSemiconductorEquipmentUI_Sensor.Views.ConsoleView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.Controls">
+             xmlns:controls="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.Controls"
+             xmlns:conv="clr-namespace:WPFSemiconductorEquipmentUI_Sensor.Converters">
+    <UserControl.Resources>
+        <conv:SensorValueConverter x:Key="SensorValueConverter" />
+        <conv:SensorStatusToToneConverter x:Key="SensorStatusToTone" />
+        <conv:SensorStatusToBadgeTextConverter x:Key="SensorStatusToBadgeText" />
+    </UserControl.Resources>
     <Grid Background="#F3F4F6">
         <Grid.RowDefinitions>
             <RowDefinition Height="42" />
@@ -174,8 +180,24 @@
                                 <StackPanel HorizontalAlignment="Center">
                                     <TextBlock Text="챔버" FontWeight="Bold" HorizontalAlignment="Center" />
                                     <TextBlock Text="{Binding ProcessRunStateText}" Margin="0,6,0,0" HorizontalAlignment="Center" />
-                                    <TextBlock Text="{Binding PressureDisplayText}" FontSize="12" HorizontalAlignment="Center" />
-                                    <TextBlock Text="{Binding TemperatureDisplayText}" FontSize="12" HorizontalAlignment="Center" />
+                                    <TextBlock FontSize="12" HorizontalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.00">
+                                                <Binding Path="Sensors[0].NumericValue" />
+                                                <Binding Path="Sensors[0].Status" />
+                                                <Binding Path="Sensors[0].Unit" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                    <TextBlock FontSize="12" HorizontalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.0">
+                                                <Binding Path="Sensors[2].NumericValue" />
+                                                <Binding Path="Sensors[2].Status" />
+                                                <Binding Path="Sensors[2].Unit" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
                                 </StackPanel>
                             </Border>
 
@@ -237,17 +259,49 @@
                             <TextBlock Grid.Column="1" Text="값" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="2" Text="상태" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             <TextBlock Grid.Row="1" Text="압력" Margin="12,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PressureDisplayText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <controls:StatusBadge Grid.Row="1" Grid.Column="2" Text="{Binding PressureStatusText}" Tone="{Binding PressureStatusTone}" Width="58" Margin="2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.00">
+                                        <Binding Path="Sensors[0].NumericValue" />
+                                        <Binding Path="Sensors[0].Status" />
+                                        <Binding Path="Sensors[0].Unit" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <controls:StatusBadge Grid.Row="1" Grid.Column="2" Text="{Binding Sensors[0].Status, Converter={StaticResource SensorStatusToBadgeText}}" Tone="{Binding Sensors[0].Status, Converter={StaticResource SensorStatusToTone}}" Width="58" Margin="2"/>
                             <TextBlock Grid.Row="2" Text="온도" Margin="12,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TemperatureDisplayText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <controls:StatusBadge Grid.Row="2" Grid.Column="2" Text="{Binding TemperatureStatusText}" Tone="{Binding TemperatureStatusTone}" Width="58" Margin="2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.0">
+                                        <Binding Path="Sensors[2].NumericValue" />
+                                        <Binding Path="Sensors[2].Status" />
+                                        <Binding Path="Sensors[2].Unit" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <controls:StatusBadge Grid.Row="2" Grid.Column="2" Text="{Binding Sensors[2].Status, Converter={StaticResource SensorStatusToBadgeText}}" Tone="{Binding Sensors[2].Status, Converter={StaticResource SensorStatusToTone}}" Width="58" Margin="2"/>
                             <TextBlock Grid.Row="3" Text="진동" Margin="12,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding VibrationDisplayText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <controls:StatusBadge Grid.Row="3" Grid.Column="2" Text="{Binding VibrationStatusText}" Tone="{Binding VibrationStatusTone}" Width="58" Margin="2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.0">
+                                        <Binding Path="Sensors[1].NumericValue" />
+                                        <Binding Path="Sensors[1].Status" />
+                                        <Binding Path="Sensors[1].Unit" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <controls:StatusBadge Grid.Row="3" Grid.Column="2" Text="{Binding Sensors[1].Status, Converter={StaticResource SensorStatusToBadgeText}}" Tone="{Binding Sensors[1].Status, Converter={StaticResource SensorStatusToTone}}" Width="58" Margin="2"/>
                             <TextBlock Grid.Row="4" Text="습도" Margin="12,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding HumidityDisplayText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <controls:StatusBadge Grid.Row="4" Grid.Column="2" Text="{Binding HumidityStatusText}" Tone="{Binding HumidityStatusTone}" Width="58" Margin="2"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <MultiBinding Converter="{StaticResource SensorValueConverter}" ConverterParameter="0.0">
+                                        <Binding Path="Sensors[3].NumericValue" />
+                                        <Binding Path="Sensors[3].Status" />
+                                        <Binding Path="Sensors[3].Unit" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <controls:StatusBadge Grid.Row="4" Grid.Column="2" Text="{Binding Sensors[3].Status, Converter={StaticResource SensorStatusToBadgeText}}" Tone="{Binding Sensors[3].Status, Converter={StaticResource SensorStatusToTone}}" Width="58" Margin="2"/>
                             <TextBlock Grid.Row="5" Text="상태" Margin="12,0" VerticalAlignment="Center" />
                             <controls:StatusBadge Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding EquipmentStateText}" Tone="{Binding EquipmentStateTone}" Width="98" HorizontalAlignment="Right" Margin="0,2,12,0"/>
                         </Grid>

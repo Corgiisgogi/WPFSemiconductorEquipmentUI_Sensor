@@ -127,10 +127,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             Sensors = new ObservableCollection<SensorMetric>
             {
-                new SensorMetric { Name = "압력", Value = "--", Unit = "bar", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "진동", Value = "--", Unit = "level", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "온도", Value = "--", Unit = "C", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 },
-                new SensorMetric { Name = "습도", Value = "--", Unit = "%", RangeText = "Raw: --", BadgeText = "대기", Tone = "Disabled", IndicatorWidth = 0 }
+                new SensorMetric { Name = "압력", Unit = "bar", Status = SensorStatus.Idle },
+                new SensorMetric { Name = "진동", Unit = "level", Status = SensorStatus.Idle },
+                new SensorMetric { Name = "온도", Unit = "C", Status = SensorStatus.Idle },
+                new SensorMetric { Name = "습도", Unit = "%", Status = SensorStatus.Idle }
             };
 
             ActivityLogs = _activityLogStore.Logs;
@@ -285,85 +285,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             private set { SetProperty(ref _etherCatStatusTone, value); }
         }
 
-        public string PressureDisplayText
-        {
-            get { return BuildSensorDisplayText(0); }
-        }
-
-        public string PressureRawText
-        {
-            get { return BuildSensorRangeText(0); }
-        }
-
-        public string PressureStatusText
-        {
-            get { return BuildSensorBadgeText(0); }
-        }
-
-        public string PressureStatusTone
-        {
-            get { return BuildSensorTone(0); }
-        }
-
-        public string VibrationDisplayText
-        {
-            get { return BuildSensorDisplayText(1); }
-        }
-
-        public string VibrationRawText
-        {
-            get { return BuildSensorRangeText(1); }
-        }
-
-        public string VibrationStatusText
-        {
-            get { return BuildSensorBadgeText(1); }
-        }
-
-        public string VibrationStatusTone
-        {
-            get { return BuildSensorTone(1); }
-        }
-
-        public string TemperatureDisplayText
-        {
-            get { return BuildSensorDisplayText(2); }
-        }
-
-        public string TemperatureRawText
-        {
-            get { return BuildSensorRangeText(2); }
-        }
-
-        public string TemperatureStatusText
-        {
-            get { return BuildSensorBadgeText(2); }
-        }
-
-        public string TemperatureStatusTone
-        {
-            get { return BuildSensorTone(2); }
-        }
-
-        public string HumidityDisplayText
-        {
-            get { return BuildSensorDisplayText(3); }
-        }
-
-        public string HumidityRawText
-        {
-            get { return BuildSensorRangeText(3); }
-        }
-
-        public string HumidityStatusText
-        {
-            get { return BuildSensorBadgeText(3); }
-        }
-
-        public string HumidityStatusTone
-        {
-            get { return BuildSensorTone(3); }
-        }
+        // 센서 표시(값/배지/색)는 View가 Sensors[i]에 직접 바인딩하고 컨버터로 변환한다.
+        // 따라서 평면 *DisplayText/*StatusText/*StatusTone 속성과 Build* 헬퍼는 더 이상 두지 않는다.
 
         public string EquipmentStateText
         {
@@ -654,65 +577,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             TrySetStatusLamp(WarningLampBit, isOn);
         }
 
-        private string BuildSensorDisplayText(int index)
-        {
-            if (Sensors == null || index < 0 || index >= Sensors.Count)
-            {
-                return "--";
-            }
-
-            var sensor = Sensors[index];
-            return sensor.Value + " " + sensor.Unit;
-        }
-
-        private string BuildSensorRangeText(int index)
-        {
-            if (Sensors == null || index < 0 || index >= Sensors.Count)
-            {
-                return "Raw: --";
-            }
-
-            return Sensors[index].RangeText;
-        }
-
-        private string BuildSensorBadgeText(int index)
-        {
-            if (Sensors == null || index < 0 || index >= Sensors.Count)
-            {
-                return "--";
-            }
-
-            return Sensors[index].BadgeText;
-        }
-
-        private string BuildSensorTone(int index)
-        {
-            if (Sensors == null || index < 0 || index >= Sensors.Count)
-            {
-                return "Disabled";
-            }
-
-            return Sensors[index].Tone;
-        }
-
+        // 센서 셀(값/배지/색)은 Sensors[i]의 INotifyPropertyChanged로 자동 갱신되므로
+        // 여기서는 센서 상태에 연동되는 대시보드(장비상태/FOUP/램프)만 알린다.
         private void NotifySensorDisplayChanged()
         {
-            OnPropertyChanged("PressureDisplayText");
-            OnPropertyChanged("PressureRawText");
-            OnPropertyChanged("PressureStatusText");
-            OnPropertyChanged("PressureStatusTone");
-            OnPropertyChanged("VibrationDisplayText");
-            OnPropertyChanged("VibrationRawText");
-            OnPropertyChanged("VibrationStatusText");
-            OnPropertyChanged("VibrationStatusTone");
-            OnPropertyChanged("TemperatureDisplayText");
-            OnPropertyChanged("TemperatureRawText");
-            OnPropertyChanged("TemperatureStatusText");
-            OnPropertyChanged("TemperatureStatusTone");
-            OnPropertyChanged("HumidityDisplayText");
-            OnPropertyChanged("HumidityRawText");
-            OnPropertyChanged("HumidityStatusText");
-            OnPropertyChanged("HumidityStatusTone");
             NotifyDashboardStateChanged();
         }
 
@@ -1054,16 +922,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 0.45d);
-            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
-            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
-            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure);
+            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration);
+            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature);
+            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity);
             if (_isAiControlRunning)
             {
-                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, "0.00", 0d, 0.45d);
-                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, "0.0", 0d, 10d);
-                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, "0.0", 0d, 60d);
-                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, "0.0", 0d, 100d);
+                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, 0d, 0.45d);
+                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, 0d, 10d);
+                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, 0d, 60d);
+                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, 0d, 100d);
             }
 
             NotifySensorDisplayChanged();
@@ -1102,16 +970,16 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             _successfulReadCount++;
 
-            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure, "0.00", 0d, 0.45d);
-            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
-            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
-            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            var pressure = UpdateSensor(Sensors[0], snapshot.Pressure, CalibratePressure);
+            var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration);
+            var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature);
+            var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity);
             if (_isAiControlRunning)
             {
-                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, "0.00", 0d, 0.45d);
-                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, "0.0", 0d, 10d);
-                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, "0.0", 0d, 60d);
-                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, "0.0", 0d, 100d);
+                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, 0d, 0.45d);
+                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, 0d, 10d);
+                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, 0d, 60d);
+                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, 0d, 100d);
             }
 
             SetSensorStale(Sensors[0]);
@@ -1333,41 +1201,33 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         private void SetSensorStale(SensorMetric sensor)
         {
-            sensor.BadgeText = "정지";
-            sensor.Tone = "Warning";
+            sensor.Status = SensorStatus.Stale;
         }
 
         private void SetSensorWarning(SensorMetric sensor)
         {
-            sensor.BadgeText = "경고";
-            sensor.Tone = "Warning";
+            sensor.Status = SensorStatus.Warning;
         }
 
         private double UpdateSensor(
             SensorMetric sensor,
             short rawValue,
-            Func<short, double> calibration,
-            string format,
-            double minimum,
-            double maximum)
+            Func<short, double> calibration)
         {
             var calibratedValue = calibration(rawValue);
 
-            sensor.Value = calibratedValue.ToString(format);
-            sensor.RangeText = "Raw: " + rawValue;
-            sensor.BadgeText = "정상";
-            sensor.Tone = "Normal";
-            sensor.IndicatorWidth = CalculateIndicatorWidth(calibratedValue, minimum, maximum);
+            sensor.RawValue = rawValue;
+            sensor.NumericValue = calibratedValue;
+            sensor.Status = SensorStatus.Normal;
             return calibratedValue;
         }
 
         // AI 자동제어 ON 시 임계값을 초과한 센서값을 임계값 바로 아래로 끌어내려 경고가 발생하지 않게 한다.
-        // 보정값은 화면 표시와 위험 평가 모두에 사용된다(원시 raw 값은 RangeText/스냅샷에 그대로 유지).
+        // 보정값은 화면 표시와 위험 평가 모두에 사용된다(원시 RawValue·스냅샷에는 원래 값이 그대로 유지).
         private double ApplyAiControlCorrection(
             SensorMetric sensor,
             double value,
             double warningThreshold,
-            string format,
             double minimum,
             double maximum)
         {
@@ -1377,23 +1237,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             var corrected = Clamp(warningThreshold * AiControlSafetyFactor, minimum, maximum);
-            sensor.Value = corrected.ToString(format);
-            sensor.BadgeText = "AI 보정";
-            sensor.Tone = "Normal";
-            sensor.IndicatorWidth = CalculateIndicatorWidth(corrected, minimum, maximum);
+            sensor.NumericValue = corrected;
+            sensor.Status = SensorStatus.AiCorrected;
             return corrected;
-        }
-
-        private static double CalculateIndicatorWidth(double value, double minimum, double maximum)
-        {
-            if (maximum <= minimum)
-            {
-                return 8d;
-            }
-
-            var normalized = (value - minimum) / (maximum - minimum);
-            normalized = Math.Max(0d, Math.Min(1d, normalized));
-            return Math.Max(8d, normalized * 220d);
         }
 
         private static double CalibratePressure(short rawValue)
