@@ -15,6 +15,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private const int ProcessLampBit = 1; // NX_OD5121 DO2
         private const int WarningLampBit = 2; // NX_OD5121 DO3
         private const int AiControlLampBit = 3; // NX_OD5121 DO4
+        private const double AiControlSafetyFactor = 0.95d; // AI 자동제어 ON 시 임계 초과값을 임계값의 95%로 보정
         private readonly ITrainerClient _trainerClient;
         private readonly ActivityLogStore _activityLogStore;
         private readonly SensorSnapshotRepository _sensorSnapshotRepository;
@@ -753,7 +754,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         private bool CanExecuteAiControlStart()
         {
-            return CanExecuteAdminCommand() && !_isAiControlRunning;
+            return CanExecuteAdminCommand() && !_isAiControlRunning && _isProcessRunning;
         }
 
         private bool CanExecuteAiControlStop()
@@ -856,6 +857,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
                 _isProcessRunning = false;
                 NotifyProcessStateChanged();
+
+                // 공정이 정지하면 진행 중인 AI 제어도 함께 정지한다. AI 자동제어는 공정이 돌아가는 동안에만 의미가 있다.
+                if (_isAiControlRunning)
+                {
+                    _isAiControlRunning = false;
+                    NotifyAiStateChanged();
+                    AddActivityLog("제어", "공정 정지에 따라 AI 제어도 정지", "WARN");
+                }
+
                 return true;
             }
 
@@ -864,6 +874,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 if (_isAiControlRunning)
                 {
                     AddActivityLog("제어", "DI3 AI 제어 시작 차단 - 이미 실행 중", "WARN");
+                    return false;
+                }
+
+                if (!_isProcessRunning)
+                {
+                    AddActivityLog("제어", "DI3 AI 제어 시작 차단 - 공정 진행 필요", "WARN");
                     return false;
                 }
 
@@ -1042,6 +1058,14 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            if (_isAiControlRunning)
+            {
+                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, "0.00", 0d, 0.45d);
+                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, "0.0", 0d, 10d);
+                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, "0.0", 0d, 60d);
+                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, "0.0", 0d, 100d);
+            }
+
             NotifySensorDisplayChanged();
 
             SetDigitalInputs(
@@ -1082,6 +1106,14 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             var vibration = UpdateSensor(Sensors[1], snapshot.Vibration, CalibrateVibration, "0.0", 0d, 10d);
             var temperature = UpdateSensor(Sensors[2], snapshot.Temperature, CalibrateTemperature, "0.0", 0d, 60d);
             var humidity = UpdateSensor(Sensors[3], snapshot.Humidity, CalibrateHumidity, "0.0", 0d, 100d);
+            if (_isAiControlRunning)
+            {
+                pressure = ApplyAiControlCorrection(Sensors[0], pressure, _settings.PressureWarningThreshold, "0.00", 0d, 0.45d);
+                vibration = ApplyAiControlCorrection(Sensors[1], vibration, _settings.VibrationWarningThreshold, "0.0", 0d, 10d);
+                temperature = ApplyAiControlCorrection(Sensors[2], temperature, _settings.TemperatureWarningThreshold, "0.0", 0d, 60d);
+                humidity = ApplyAiControlCorrection(Sensors[3], humidity, _settings.HumidityWarningThreshold, "0.0", 0d, 100d);
+            }
+
             SetSensorStale(Sensors[0]);
             SetSensorStale(Sensors[1]);
             SetSensorStale(Sensors[2]);
@@ -1327,6 +1359,29 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             sensor.Tone = "Normal";
             sensor.IndicatorWidth = CalculateIndicatorWidth(calibratedValue, minimum, maximum);
             return calibratedValue;
+        }
+
+        // AI 자동제어 ON 시 임계값을 초과한 센서값을 임계값 바로 아래로 끌어내려 경고가 발생하지 않게 한다.
+        // 보정값은 화면 표시와 위험 평가 모두에 사용된다(원시 raw 값은 RangeText/스냅샷에 그대로 유지).
+        private double ApplyAiControlCorrection(
+            SensorMetric sensor,
+            double value,
+            double warningThreshold,
+            string format,
+            double minimum,
+            double maximum)
+        {
+            if (value < warningThreshold)
+            {
+                return value;
+            }
+
+            var corrected = Clamp(warningThreshold * AiControlSafetyFactor, minimum, maximum);
+            sensor.Value = corrected.ToString(format);
+            sensor.BadgeText = "AI 보정";
+            sensor.Tone = "Normal";
+            sensor.IndicatorWidth = CalculateIndicatorWidth(corrected, minimum, maximum);
+            return corrected;
         }
 
         private static double CalculateIndicatorWidth(double value, double minimum, double maximum)
