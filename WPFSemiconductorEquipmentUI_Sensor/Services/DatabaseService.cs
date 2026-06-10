@@ -52,6 +52,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
     temperature_value REAL NOT NULL,
     humidity_raw INTEGER NOT NULL,
     humidity_value REAL NOT NULL,
+    pressure_status TEXT NOT NULL DEFAULT 'Idle',
+    vibration_status TEXT NOT NULL DEFAULT 'Idle',
+    temperature_status TEXT NOT NULL DEFAULT 'Idle',
+    humidity_status TEXT NOT NULL DEFAULT 'Idle',
     digital_input1 INTEGER NOT NULL,
     digital_input2 INTEGER NOT NULL,
     digital_input3 INTEGER NOT NULL,
@@ -64,6 +68,25 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );");
+
+                // 기존 DB 마이그레이션: 센서별 상태 컬럼을 추가한다. 이미 있으면 무시.
+                AddColumnIfMissing(connection, "sensor_snapshots", "pressure_status", "TEXT NOT NULL DEFAULT 'Idle'");
+                AddColumnIfMissing(connection, "sensor_snapshots", "vibration_status", "TEXT NOT NULL DEFAULT 'Idle'");
+                AddColumnIfMissing(connection, "sensor_snapshots", "temperature_status", "TEXT NOT NULL DEFAULT 'Idle'");
+                AddColumnIfMissing(connection, "sensor_snapshots", "humidity_status", "TEXT NOT NULL DEFAULT 'Idle'");
+            }
+        }
+
+        // SQLite에는 ADD COLUMN IF NOT EXISTS가 없으므로, 컬럼이 이미 존재해서 나는
+        // 예외(duplicate column name)는 무시한다.
+        private static void AddColumnIfMissing(SQLiteConnection connection, string table, string column, string definition)
+        {
+            try
+            {
+                ExecuteNonQuery(connection, "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition + ";");
+            }
+            catch (SQLiteException)
+            {
             }
         }
 

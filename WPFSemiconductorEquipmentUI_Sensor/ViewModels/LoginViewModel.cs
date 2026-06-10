@@ -1,14 +1,21 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using WPFSemiconductorEquipmentUI_Sensor.Services;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
-    public class LoginViewModel : ScreenViewModelBase
+    public class LoginViewModel : ScreenViewModelBase, IDisposable
     {
+        private static readonly TimeSpan HealthCheckInterval = TimeSpan.FromSeconds(5);
+
         private readonly IAuthService _authService;
+        private DispatcherTimer _healthTimer;
+        private bool _healthCheckInFlight;
+        private bool _disposed;
         private string _authMode;
         private string _loginUserId;
         private string _loginPassword;
@@ -16,6 +23,8 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private string _registerDisplayName;
         private string _registerPassword;
         private string _registerConfirmPassword;
+        private string _apiStatusText;
+        private string _apiStatusTone;
         private string _authStatusText;
         private string _authStatusTone;
         private string _authMessage;
@@ -37,9 +46,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             RegisterDisplayName = string.Empty;
             Department = "공정 장비";
             AuthMode = "Login";
-            AuthStatusText = authService == null ? "API 미설정" : "API 확인 전";
-            AuthStatusTone = authService == null ? "Warning" : "Disabled";
-            AuthMessage = "Flask API 연결을 자동으로 확인하는 중입니다.";
+            ApiStatusText = authService == null ? "API 미설정" : "API 확인 전";
+            ApiStatusTone = authService == null ? "Warning" : "Disabled";
+            AuthStatusText = "대기";
+            AuthStatusTone = "Disabled";
+            AuthMessage = "승인된 계정으로 로그인하거나 회원가입을 요청하세요.";
             TestApiCommand = new RelayCommand(parameter => TestApi(), parameter => CanUseAuth());
             ShowLoginCommand = new RelayCommand(parameter => ShowLogin());
             ShowSignUpCommand = new RelayCommand(parameter => ShowSignUp());
@@ -50,7 +61,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             Session.PropertyChanged += OnSessionPropertyChanged;
             if (_authService != null)
             {
-                TestApi();
+                StartHealthMonitor();
             }
         }
 
@@ -224,6 +235,37 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
         }
 
+        // Flask API 연결 상태 전용(인증 결과와 분리). 주기 health 체크가 이 값만 갱신한다.
+        public string ApiStatusText
+        {
+            get { return _apiStatusText; }
+            private set
+            {
+                if (_apiStatusText == value)
+                {
+                    return;
+                }
+
+                _apiStatusText = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string ApiStatusTone
+        {
+            get { return _apiStatusTone; }
+            private set
+            {
+                if (_apiStatusTone == value)
+                {
+                    return;
+                }
+
+                _apiStatusTone = value;
+                OnPropertyChanged();
+            }
+        }
+
         public string AuthStatusText
         {
             get { return _authStatusText; }
@@ -282,6 +324,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 OnPropertyChanged("SignUpPanelVisibility");
                 CommandManager.InvalidateRequerySuggested();
             }
+
+            if (e.PropertyName == "IsApproved")
+            {
+                // 로그인 중에는 배지가 안 보이고 갱신도 막히므로 불필요한 /api/health 폴링을 멈춘다.
+                UpdateHealthMonitorState();
+            }
         }
 
         private string CurrentUserId
@@ -298,11 +346,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         {
             AuthMode = "Login";
             AuthMessage = "승인된 계정으로 로그인하면 장비 제어 권한이 활성화됩니다.";
-            if (AuthStatusText != "API 정상" && AuthStatusText != "API 오류")
-            {
-                AuthStatusText = _authService == null ? "API 미설정" : "API 확인 전";
-                AuthStatusTone = _authService == null ? "Warning" : "Disabled";
-            }
         }
 
         private void ShowSignUp()
@@ -314,30 +357,105 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             AuthMessage = "회원가입 요청을 생성합니다. 웹 관리자가 승인할 때까지 계정은 잠금 상태입니다.";
-            if (AuthStatusText != "API 정상" && AuthStatusText != "API 오류")
+        }
+
+        private void StartHealthMonitor()
+        {
+            // 시작 직후 1회 검사 후, 주기적으로 재검사해 실시간으로 API 상태를 갱신한다.
+            RefreshApiHealth();
+            _healthTimer = new DispatcherTimer { Interval = HealthCheckInterval };
+            _healthTimer.Tick += OnHealthTimerTick;
+            _healthTimer.Start();
+        }
+
+        private void OnHealthTimerTick(object sender, EventArgs e)
+        {
+            RefreshApiHealth();
+        }
+
+        private void UpdateHealthMonitorState()
+        {
+            if (_healthTimer == null)
             {
-                AuthStatusText = _authService == null ? "API 미설정" : "API 확인 전";
-                AuthStatusTone = _authService == null ? "Warning" : "Disabled";
+                return;
+            }
+
+            // 로그인(승인) 상태에서는 폴링 중지, 로그아웃되면 재개.
+            if (IsLoggedIn)
+            {
+                _healthTimer.Stop();
+            }
+            else if (!_healthTimer.IsEnabled)
+            {
+                _healthTimer.Start();
+                RefreshApiHealth();
             }
         }
 
-        private void TestApi()
+        // 주기 검사를 백그라운드 스레드에서 수행해 UI를 막지 않는다. 결과만 UI 스레드로 마샬링한다.
+        private void RefreshApiHealth()
         {
-            RunAuthAction(() =>
+            if (_authService == null || _disposed || IsLoggedIn || _healthCheckInFlight)
             {
-                if (_authService.CheckHealth())
+                return;
+            }
+
+            _healthCheckInFlight = true;
+            var dispatcher = Application.Current != null ? Application.Current.Dispatcher : null;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                bool ok;
+                try
                 {
-                    AuthStatusText = "API 정상";
-                    AuthStatusTone = "Normal";
-                    AuthMessage = "Flask API 연결 확인에 성공했습니다. 로그인/회원가입 요청을 보낼 수 있습니다.";
+                    ok = _authService.CheckHealth();
+                }
+                catch
+                {
+                    ok = false;
+                }
+
+                Action apply = () =>
+                {
+                    _healthCheckInFlight = false;
+                    if (_disposed || IsLoggedIn)
+                    {
+                        return;
+                    }
+
+                    ApplyHealthResult(ok);
+                };
+
+                if (dispatcher != null)
+                {
+                    dispatcher.Invoke(apply);
                 }
                 else
                 {
-                    AuthStatusText = "API 오류";
-                    AuthStatusTone = "Danger";
-                    AuthMessage = "Flask API 상태 확인 응답이 정상(200 OK)이 아닙니다.";
+                    apply();
                 }
-            }, false);
+            });
+        }
+
+        // API 연결 배지만 갱신한다. 인증 결과(AuthStatusText/AuthMessage)는 건드리지 않아
+        // 두 메시지가 겹치지 않는다.
+        private void ApplyHealthResult(bool ok)
+        {
+            if (ok)
+            {
+                ApiStatusText = "API 정상";
+                ApiStatusTone = "Normal";
+            }
+            else
+            {
+                ApiStatusText = "API 오류";
+                ApiStatusTone = "Danger";
+            }
+        }
+
+        // 수동 "API 확인" 명령: 주기 검사와 동일 경로로 즉시 재검사한다.
+        private void TestApi()
+        {
+            RefreshApiHealth();
         }
 
         private void Login()
@@ -484,7 +602,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                     Session.Logout();
                 }
 
-                AuthStatusText = "API 오류";
+                AuthStatusText = "요청 실패";
                 AuthStatusTone = "Danger";
                 AuthMessage = ex.Message;
             }
@@ -563,6 +681,27 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
 
             return "Danger";
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            if (_healthTimer != null)
+            {
+                _healthTimer.Stop();
+                _healthTimer.Tick -= OnHealthTimerTick;
+                _healthTimer = null;
+            }
+
+            if (Session != null)
+            {
+                Session.PropertyChanged -= OnSessionPropertyChanged;
+            }
         }
     }
 }

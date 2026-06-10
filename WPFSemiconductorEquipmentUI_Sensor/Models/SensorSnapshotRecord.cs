@@ -13,6 +13,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Models
         public double TemperatureValue { get; set; }
         public short HumidityRaw { get; set; }
         public double HumidityValue { get; set; }
+        public SensorStatus PressureStatus { get; set; }
+        public SensorStatus VibrationStatus { get; set; }
+        public SensorStatus TemperatureStatus { get; set; }
+        public SensorStatus HumidityStatus { get; set; }
         public bool DigitalInput1 { get; set; }
         public bool DigitalInput2 { get; set; }
         public bool DigitalInput3 { get; set; }

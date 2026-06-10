@@ -10,7 +10,7 @@
             </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                 <controls:StatusBadge Text="DB 연결됨" Tone="Normal" Margin="0,0,8,0" />
-                <controls:StatusBadge Text="{Binding AuthStatusText}" Tone="{Binding AuthStatusTone}" Width="104" HorizontalAlignment="Right" />
+                <controls:StatusBadge Text="{Binding ApiStatusText}" Tone="{Binding ApiStatusTone}" Width="104" HorizontalAlignment="Right" />
             </StackPanel>
         </DockPanel>
 
@@ -69,7 +69,7 @@
                         <StackPanel>
                             <TextBlock Text="사용자 인증" FontSize="24" FontWeight="Bold" Foreground="{StaticResource BrushTextPrimary}" />
                         </StackPanel>
-                        <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding AuthStatusText}" Tone="{Binding AuthStatusTone}" Width="104" HorizontalAlignment="Right" />
+                        <controls:StatusBadge DockPanel.Dock="Right" Text="{Binding ApiStatusText}" Tone="{Binding ApiStatusTone}" Width="104" HorizontalAlignment="Right" />
                     </DockPanel>
 
                     <StackPanel Visibility="{Binding LoggedInPanelVisibility}" Margin="0,22,0,0">

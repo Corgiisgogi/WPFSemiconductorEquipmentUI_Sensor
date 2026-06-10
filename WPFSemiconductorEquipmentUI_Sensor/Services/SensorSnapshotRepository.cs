@@ -21,10 +21,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                 using (var command = new SQLiteCommand(@"INSERT INTO sensor_snapshots
 (captured_at, pressure_raw, pressure_value, vibration_raw, vibration_value,
 temperature_raw, temperature_value, humidity_raw, humidity_value,
+pressure_status, vibration_status, temperature_status, humidity_status,
 digital_input1, digital_input2, digital_input3, digital_input4, optical_sensor, inductive_sensor)
 VALUES
 (@captured_at, @pressure_raw, @pressure_value, @vibration_raw, @vibration_value,
 @temperature_raw, @temperature_value, @humidity_raw, @humidity_value,
+@pressure_status, @vibration_status, @temperature_status, @humidity_status,
 @digital_input1, @digital_input2, @digital_input3, @digital_input4, @optical_sensor, @inductive_sensor);", connection))
                 {
                     command.Parameters.AddWithValue("@captured_at", snapshot.CapturedAt.ToString("o"));
@@ -36,6 +38,10 @@ VALUES
                     command.Parameters.AddWithValue("@temperature_value", snapshot.TemperatureValue);
                     command.Parameters.AddWithValue("@humidity_raw", snapshot.HumidityRaw);
                     command.Parameters.AddWithValue("@humidity_value", snapshot.HumidityValue);
+                    command.Parameters.AddWithValue("@pressure_status", snapshot.PressureStatus.ToString());
+                    command.Parameters.AddWithValue("@vibration_status", snapshot.VibrationStatus.ToString());
+                    command.Parameters.AddWithValue("@temperature_status", snapshot.TemperatureStatus.ToString());
+                    command.Parameters.AddWithValue("@humidity_status", snapshot.HumidityStatus.ToString());
                     command.Parameters.AddWithValue("@digital_input1", ToInt(snapshot.DigitalInput1));
                     command.Parameters.AddWithValue("@digital_input2", ToInt(snapshot.DigitalInput2));
                     command.Parameters.AddWithValue("@digital_input3", ToInt(snapshot.DigitalInput3));
@@ -55,6 +61,7 @@ VALUES
                 connection.Open();
                 using (var command = new SQLiteCommand(@"SELECT captured_at, pressure_raw, pressure_value, vibration_raw, vibration_value,
 temperature_raw, temperature_value, humidity_raw, humidity_value,
+pressure_status, vibration_status, temperature_status, humidity_status,
 digital_input1, digital_input2, digital_input3, digital_input4, optical_sensor, inductive_sensor
 FROM sensor_snapshots
 WHERE captured_at <= @captured_at
@@ -90,6 +97,10 @@ LIMIT 1;", connection))
                 TemperatureValue = Convert.ToDouble(reader["temperature_value"]),
                 HumidityRaw = Convert.ToInt16(reader["humidity_raw"]),
                 HumidityValue = Convert.ToDouble(reader["humidity_value"]),
+                PressureStatus = ParseStatus(reader["pressure_status"]),
+                VibrationStatus = ParseStatus(reader["vibration_status"]),
+                TemperatureStatus = ParseStatus(reader["temperature_status"]),
+                HumidityStatus = ParseStatus(reader["humidity_status"]),
                 DigitalInput1 = Convert.ToInt32(reader["digital_input1"]) != 0,
                 DigitalInput2 = Convert.ToInt32(reader["digital_input2"]) != 0,
                 DigitalInput3 = Convert.ToInt32(reader["digital_input3"]) != 0,
@@ -102,6 +113,17 @@ LIMIT 1;", connection))
         private static int ToInt(bool value)
         {
             return value ? 1 : 0;
+        }
+
+        private static SensorStatus ParseStatus(object value)
+        {
+            SensorStatus status;
+            if (Enum.TryParse(Convert.ToString(value), out status))
+            {
+                return status;
+            }
+
+            return SensorStatus.Idle;
         }
     }
 }

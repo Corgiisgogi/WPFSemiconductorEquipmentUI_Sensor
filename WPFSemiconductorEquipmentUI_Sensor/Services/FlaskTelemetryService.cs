@@ -47,10 +47,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
                 type = "sensor",
                 created_at = nowUtc.ToString("o"),
                 capturedAt = snapshot.CapturedAt.ToString("o"),
-                pressure = new { raw = snapshot.PressureRaw, value = snapshot.PressureValue, unit = "bar" },
-                vibration = new { raw = snapshot.VibrationRaw, value = snapshot.VibrationValue, unit = "level" },
-                temperature = new { raw = snapshot.TemperatureRaw, value = snapshot.TemperatureValue, unit = "C" },
-                humidity = new { raw = snapshot.HumidityRaw, value = snapshot.HumidityValue, unit = "%" },
+                pressure = new { raw = snapshot.PressureRaw, value = snapshot.PressureValue, unit = "bar", status = snapshot.PressureStatus.ToString() },
+                vibration = new { raw = snapshot.VibrationRaw, value = snapshot.VibrationValue, unit = "level", status = snapshot.VibrationStatus.ToString() },
+                temperature = new { raw = snapshot.TemperatureRaw, value = snapshot.TemperatureValue, unit = "C", status = snapshot.TemperatureStatus.ToString() },
+                humidity = new { raw = snapshot.HumidityRaw, value = snapshot.HumidityValue, unit = "%", status = snapshot.HumidityStatus.ToString() },
                 digitalInputs = new
                 {
                     di1 = snapshot.DigitalInput1,
