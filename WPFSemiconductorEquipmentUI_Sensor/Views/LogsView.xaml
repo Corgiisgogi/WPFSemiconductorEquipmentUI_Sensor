@@ -98,6 +98,8 @@
             </Grid.ColumnDefinitions>
             <DataGrid ItemsSource="{Binding ActivityLogs}"
                       SelectedItem="{Binding SelectedLog}"
+                      MaxHeight="472"
+                      VerticalAlignment="Top"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       SelectionUnit="FullRow"
@@ -115,6 +117,19 @@
                         <Setter Property="VerticalAlignment" Value="Center" />
                     </Style>
                 </DataGrid.Resources>
+                <!-- 등급별 행 배경: INFO는 기본(교차 배경) 유지, WARN=연노랑, RISK=연빨강 -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Severity}" Value="WARN">
+                                <Setter Property="Background" Value="{StaticResource BrushWarningSoft}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Severity}" Value="RISK">
+                                <Setter Property="Background" Value="{StaticResource BrushDangerSoft}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="날짜" Binding="{Binding DateText}" Width="92" ElementStyle="{StaticResource LogCellTextStyle}" />
                     <DataGridTextColumn Header="시간" Binding="{Binding Time}" Width="72" ElementStyle="{StaticResource LogCellTextStyle}" />

@@ -56,7 +56,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             ShowSignUpCommand = new RelayCommand(parameter => ShowSignUp());
             LoginCommand = new RelayCommand(parameter => Login(), parameter => CanUseAuth());
             RegisterCommand = new RelayCommand(parameter => Register(), parameter => CanUseAuth());
-            CheckStatusCommand = new RelayCommand(parameter => CheckStatus(), parameter => CanUseAuth() && !string.IsNullOrWhiteSpace(CurrentUserId));
             LogoutCommand = new RelayCommand(parameter => Logout());
             Session.PropertyChanged += OnSessionPropertyChanged;
             if (_authService != null)
@@ -71,7 +70,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         public ICommand ShowSignUpCommand { get; private set; }
         public ICommand LoginCommand { get; private set; }
         public ICommand RegisterCommand { get; private set; }
-        public ICommand CheckStatusCommand { get; private set; }
         public ICommand LogoutCommand { get; private set; }
 
         public string AuthMode
@@ -332,11 +330,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             }
         }
 
-        private string CurrentUserId
-        {
-            get { return IsSignUpMode ? RegisterUserId : LoginUserId; }
-        }
-
         private bool CanUseAuth()
         {
             return !_isBusy && _authService != null;
@@ -490,43 +483,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 AuthStatusText = result != null && result.Success ? "승인 대기" : "가입 실패";
                 AuthStatusTone = result != null && result.Success ? "Warning" : "Danger";
                 AuthMessage = result == null || string.IsNullOrWhiteSpace(result.Message)
-                    ? "회원가입 요청이 전송되었습니다. 웹 관리자 승인 후 상태 확인 또는 로그인을 진행하세요."
+                    ? "회원가입 요청이 전송되었습니다. 웹 관리자 승인 후 로그인을 진행하세요."
                     : TranslateServerMessage(result.Message);
                 LoginUserId = RegisterUserId;
-            });
-        }
-
-        private void CheckStatus()
-        {
-            var userId = CurrentUserId;
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                SetInvalid("승인 상태 확인에는 사용자 ID가 필요합니다.");
-                return;
-            }
-
-            RunAuthAction(() =>
-            {
-                var result = _authService.GetStatus(userId);
-                if (result != null && string.IsNullOrWhiteSpace(result.UserId))
-                {
-                    result.UserId = userId;
-                }
-
-                if (result != null && string.IsNullOrWhiteSpace(result.ApprovalStatus))
-                {
-                    result.ApprovalStatus = result.Success ? "Approved" : "Pending";
-                }
-
-                if (result != null && string.Equals(result.ApprovalStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-                {
-                    result.Success = true;
-                }
-
-                Session.ApplyAuthResult(result);
-                AuthStatusText = StatusText(result == null ? null : result.ApprovalStatus);
-                AuthStatusTone = StatusTone(result == null ? null : result.ApprovalStatus);
-                AuthMessage = "Flask API에서 승인 상태를 갱신했습니다.";
             });
         }
 

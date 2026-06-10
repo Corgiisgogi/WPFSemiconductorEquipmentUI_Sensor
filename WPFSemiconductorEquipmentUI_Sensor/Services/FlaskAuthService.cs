@@ -37,11 +37,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             });
         }
 
-        public AuthResult GetStatus(string userId)
-        {
-            return Get<AuthResult>("/api/users/" + Uri.EscapeDataString(userId) + "/status");
-        }
-
         public bool CheckHealth()
         {
             var request = CreateRequest("/api/health", "GET");
@@ -49,12 +44,6 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             {
                 return response.StatusCode == HttpStatusCode.OK;
             }
-        }
-
-        private T Get<T>(string path)
-        {
-            var request = CreateRequest(path, "GET");
-            return ReadResponse<T>(request);
         }
 
         private T Post<T>(string path, object payload)
