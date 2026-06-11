@@ -12,6 +12,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     public class ConsoleViewModel : ScreenViewModelBase, IDisposable
     {
         private const int StaleReadThreshold = 6;
+        private const int SustainedWarningRecountSeconds = 10; // 연속 경고가 이 시간 이상 지속될 때마다 위험 카운트를 1회 추가 누적
         private const int ProcessLampBit = 1; // NX_OD5121 DO2
         private const int WarningLampBit = 2; // NX_OD5121 DO3
         private const int AiControlLampBit = 3; // NX_OD5121 DO4
@@ -39,6 +40,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private short _lastHumidityRaw;
         private DateTime _lastSensorSnapshotSavedAt;
         private DateTime _riskWindowStartedAt;
+        private DateTime _warningSustainedSince;
         private int _riskWarningCount;
         private bool _wasRiskWarningActive;
         private bool _autoShutdownIssued;
@@ -120,6 +122,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _settings = settings ?? new AppSettingsStore();
             _trainerClient = trainerClient;
             _riskWindowStartedAt = DateTime.MinValue;
+            _warningSustainedSince = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
 
             Title = "WPF 장비 제어 콘솔";
@@ -772,6 +775,24 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             return true;
         }
 
+        // FOUP A/B 감지 해제로 진행 중인 공정을 자동 정지한다. 공정이 멈추면 의미가 없는 AI 제어도 함께 정지한다.
+        private void StopProcessForFoupLost()
+        {
+            _isProcessRunning = false;
+            NotifyProcessStateChanged();
+
+            if (_isAiControlRunning)
+            {
+                _isAiControlRunning = false;
+                NotifyAiStateChanged();
+            }
+
+            AddActivityLog("AI 규칙", "FOUP A/B 감지 해제 - 공정 자동 정지", "RISK");
+            SummaryBadgeText = "공정 정지";
+            SummaryTone = "Warning";
+            SummaryText = "FOUP A/B 감지가 해제되어 공정이 자동으로 정지되었습니다. 광센서와 근접센서가 모두 ON일 때 다시 시작할 수 있습니다.";
+        }
+
         private string BuildControlSummaryText(string commandName)
         {
             if (string.Equals(commandName, "DI1 Process Start", StringComparison.OrdinalIgnoreCase))
@@ -1136,6 +1157,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 _riskWarningCount = 0;
                 _riskWindowStartedAt = DateTime.MinValue;
+                _warningSustainedSince = DateTime.MinValue;
                 _autoShutdownIssued = false;
             }
 
@@ -1144,6 +1166,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 // 현재 위험 표시만 해제하고 카운트/윈도우는 유지한다. 윈도우 내에 다시 경고가 발생하면
                 // 별개 이벤트로 누적되어야 자동 종료(예: 60초 내 2회)가 가능하다.
                 _wasRiskWarningActive = false;
+                _warningSustainedSince = DateTime.MinValue;
                 _forceShutdownAllowedByRisk = false;
                 RiskStatusText = "AI 정상";
                 RiskStatusTone = "Normal";
@@ -1167,12 +1190,24 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 _riskWindowStartedAt = now;
             }
 
-            // 경고 "진입"(정상→경고 전이)일 때만 1회로 센다. 동시에 여러 센서가 초과해도 진입 1회이며,
-            // 경고가 여러 폴링에 걸쳐 지속돼도 중복 카운트하지 않는다.
+            if (_warningSustainedSince == DateTime.MinValue)
+            {
+                _warningSustainedSince = now;
+            }
+
+            // 경고 "진입"(정상→경고 전이)일 때 1회 센다. 동시에 여러 센서가 초과해도 진입 1회다.
+            // 그리고 경고가 끊기지 않고 SustainedWarningRecountSeconds(10초) 이상 지속되면, 지속되는 동안
+            // 그 간격마다 1회씩 추가로 누적해 "장시간 위험 유지"도 자동 종료로 이어지게 한다.
             if (!_wasRiskWarningActive)
             {
                 _riskWarningCount += 1;
                 AddActivityLog("AI 규칙", details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
+            }
+            else if ((now - _warningSustainedSince).TotalSeconds >= SustainedWarningRecountSeconds)
+            {
+                _riskWarningCount += 1;
+                _warningSustainedSince = now;
+                AddActivityLog("AI 규칙", details + " 경고 " + SustainedWarningRecountSeconds + "초 이상 지속. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
             }
 
             _wasRiskWarningActive = true;
@@ -1290,6 +1325,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 OnPropertyChanged("ProcessRunDetailText");
                 NotifyDashboardStateChanged();
                 CommandManager.InvalidateRequerySuggested();
+
+                // 공정은 FOUP A/B(광센서+근접센서)가 모두 감지된 상태에서만 진행될 수 있다.
+                // 진행 중에 둘 중 하나라도 해제되면 안전을 위해 공정을 자동 정지한다.
+                if (!IsFoupReady && _isProcessRunning)
+                {
+                    StopProcessForFoupLost();
+                }
             }
 
             SetDigitalStatus(digitalInput1, out _digitalInput1Text, out _digitalInput1Tone, "DigitalInput1Text", "DigitalInput1Tone");

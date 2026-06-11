@@ -12,7 +12,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     {
         // Development/test switch: allows opening Settings before an Admin login so the Flask API URL
         // can be changed between localhost and a classroom server. Set to false for final operation.
-        private const bool AllowSettingsWithoutAdminForApiSetup = true;
+        private const bool AllowSettingsWithoutAdminForApiSetup = false;
         private object _currentViewModel;
         private NavigationItem _authNavigationItem;
         private NavigationItem _settingsNavigationItem;
