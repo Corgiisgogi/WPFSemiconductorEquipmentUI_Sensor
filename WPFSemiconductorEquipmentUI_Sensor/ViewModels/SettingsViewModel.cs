@@ -8,6 +8,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
     public class SettingsViewModel : ScreenViewModelBase
     {
+        // 임계값 허용 상한. ConsoleViewModel의 AI 보정 클램프 상한과 동일하게 맞춘다(센서 물리 범위).
+        // 하한은 모두 0 초과(양수)만 허용한다 — 0/음수 임계값은 매 poll 경고를 유발해 위험 엔진을 무력화한다.
+        private const double MaxPressureThreshold = 0.45d;
+        private const double MaxVibrationThreshold = 10d;
+        private const double MaxTemperatureThreshold = 60d;
+        private const double MaxHumidityThreshold = 100d;
+
         private readonly AppSettingsStore _settings;
         private string _settingsStatusText;
         private string _settingsStatusTone;
@@ -78,7 +85,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _pressureWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.PressureWarningThreshold = parsed, "압력 경고 기준");
+                ApplyDoubleSetting(value, parsed => _settings.PressureWarningThreshold = parsed, "압력 경고 기준", MaxPressureThreshold);
                 OnPropertyChanged();
             }
         }
@@ -94,7 +101,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _temperatureWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.TemperatureWarningThreshold = parsed, "온도 경고 기준");
+                ApplyDoubleSetting(value, parsed => _settings.TemperatureWarningThreshold = parsed, "온도 경고 기준", MaxTemperatureThreshold);
                 OnPropertyChanged();
             }
         }
@@ -110,7 +117,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _vibrationWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.VibrationWarningThreshold = parsed, "진동 경고 기준");
+                ApplyDoubleSetting(value, parsed => _settings.VibrationWarningThreshold = parsed, "진동 경고 기준", MaxVibrationThreshold);
                 OnPropertyChanged();
             }
         }
@@ -126,7 +133,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 }
 
                 _humidityWarningThresholdText = value;
-                ApplyDoubleSetting(value, parsed => _settings.HumidityWarningThreshold = parsed, "습도 경고 기준");
+                ApplyDoubleSetting(value, parsed => _settings.HumidityWarningThreshold = parsed, "습도 경고 기준", MaxHumidityThreshold);
                 OnPropertyChanged();
             }
         }
@@ -184,10 +191,10 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _humidityWarningThresholdText = FormatDouble(_settings.HumidityWarningThreshold);
         }
 
-        private void ApplyDoubleSetting(string text, Action<double> apply, string label)
+        private void ApplyDoubleSetting(string text, Action<double> apply, string label, double max)
         {
             double parsed;
-            if (TryParseDouble(text, out parsed))
+            if (TryParseDouble(text, out parsed) && parsed > 0d && parsed <= max)
             {
                 apply(parsed);
                 SettingsStatusText = "수정 중";
@@ -197,8 +204,22 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             SettingsStatusText = "입력 오류";
             SettingsStatusTone = "Danger";
-            Description = label + "은(는) 소수 입력이 필요합니다. 예: 0.20, 0.8, 7.5";
+            Description = label + "은(는) 0 보다 크고 " + FormatDouble(max) + " 이하인 소수여야 합니다.";
             OnPropertyChanged("Description");
+        }
+
+        private static bool IsValidThreshold(string text, double max)
+        {
+            double parsed;
+            return TryParseDouble(text, out parsed) && parsed > 0d && parsed <= max;
+        }
+
+        private bool AllThresholdInputsValid()
+        {
+            return IsValidThreshold(_pressureWarningThresholdText, MaxPressureThreshold)
+                && IsValidThreshold(_vibrationWarningThresholdText, MaxVibrationThreshold)
+                && IsValidThreshold(_temperatureWarningThresholdText, MaxTemperatureThreshold)
+                && IsValidThreshold(_humidityWarningThresholdText, MaxHumidityThreshold);
         }
 
         private static bool TryParseDouble(string text, out double value)
@@ -220,6 +241,17 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
         private void SaveSettings()
         {
+            // 잘못된 임계값이 입력란에 남아 있으면, 조용히 이전 값으로 되돌리고 "저장됨"으로 표시하는
+            // 오해를 막기 위해 저장을 중단하고 오류를 알린다.
+            if (!AllThresholdInputsValid())
+            {
+                SettingsStatusText = "입력 오류";
+                SettingsStatusTone = "Danger";
+                Description = "잘못된 임계값이 있어 저장하지 않았습니다. 빨간색(입력 오류)으로 표시된 항목을 확인하세요.";
+                OnPropertyChanged("Description");
+                return;
+            }
+
             try
             {
                 _settings.Save();

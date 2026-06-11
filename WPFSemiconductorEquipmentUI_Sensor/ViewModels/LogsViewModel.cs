@@ -8,9 +8,10 @@ using WPFSemiconductorEquipmentUI_Sensor.Services;
 
 namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 {
-    public class LogsViewModel : ScreenViewModelBase
+    public class LogsViewModel : ScreenViewModelBase, IDisposable
     {
         private const int DefaultLimit = 300;
+        private bool _disposed;
         private readonly ActivityLogStore _activityLogStore;
         private readonly ActivityLogRepository _activityLogRepository;
         private readonly SensorSnapshotRepository _sensorSnapshotRepository;
@@ -435,6 +436,22 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             field = value;
             OnPropertyChanged(propertyName);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+
+            // 장기 생존하는 ActivityLogStore가 이 VM을 참조하지 않도록 구독을 해제한다.
+            if (_activityLogStore != null && _activityLogStore.Logs != null)
+            {
+                _activityLogStore.Logs.CollectionChanged -= OnActivityLogStoreChanged;
+            }
         }
     }
 }

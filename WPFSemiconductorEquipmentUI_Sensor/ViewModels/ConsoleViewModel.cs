@@ -13,6 +13,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
     {
         private const int StaleReadThreshold = 6;
         private const int SustainedWarningRecountSeconds = 10; // 연속 경고가 이 시간 이상 지속될 때마다 위험 카운트를 1회 추가 누적
+        private const int WarningClearDebounceSeconds = 3; // 경고가 이 시간 미만으로 잠깐 사라졌다 다시 발생하면 같은 이벤트로 보고 중복 누적하지 않는다
         private const int ProcessLampBit = 1; // NX_OD5121 DO2
         private const int WarningLampBit = 2; // NX_OD5121 DO3
         private const int AiControlLampBit = 3; // NX_OD5121 DO4
@@ -38,9 +39,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
         private short _lastVibrationRaw;
         private short _lastTemperatureRaw;
         private short _lastHumidityRaw;
-        private DateTime _lastSensorSnapshotSavedAt;
+        private readonly System.Diagnostics.Stopwatch _snapshotSaveStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        private TimeSpan? _lastSnapshotSaveAt;
         private DateTime _riskWindowStartedAt;
         private DateTime _warningSustainedSince;
+        private DateTime _warningClearedSince;
         private int _riskWarningCount;
         private bool _wasRiskWarningActive;
         private bool _autoShutdownIssued;
@@ -123,6 +126,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             _trainerClient = trainerClient;
             _riskWindowStartedAt = DateTime.MinValue;
             _warningSustainedSince = DateTime.MinValue;
+            _warningClearedSince = DateTime.MinValue;
             _session.PropertyChanged += OnSessionPropertyChanged;
 
             Title = "WPF 장비 제어 콘솔";
@@ -1017,7 +1021,9 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 snapshot.OpticalSensor,
                 snapshot.InductiveSensor);
             HandleDigitalInputCommands(snapshot);
-            EvaluateRiskRules(pressure, vibration, temperature, humidity);
+            // 값 정지(stale) 상태에서는 동결된 값으로 위험 카운트를 누적하거나 자동 종료를 발동하지 않는다.
+            // 표시(램프/상태)만 갱신하고, 신뢰할 수 없는 데이터로는 안전 동작을 취하지 않는다.
+            EvaluateRiskRules(pressure, vibration, temperature, humidity, false);
             TrySaveSensorSnapshot(snapshot, pressure, vibration, temperature, humidity);
 
             ConnectionStatusText = "값 정지";
@@ -1047,9 +1053,11 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            var now = DateTime.Now;
-            if (_lastSensorSnapshotSavedAt != DateTime.MinValue
-                && (now - _lastSensorSnapshotSavedAt).TotalSeconds < _settings.SensorSnapshotSaveIntervalSeconds)
+            // 저장 간격은 벽시계(DateTime.Now) 대신 단조 증가하는 Stopwatch로 측정한다.
+            // 시스템 시간이 뒤로 점프해도 간격 계산이 음수가 되어 저장이 멈추는 일을 막는다.
+            var elapsed = _snapshotSaveStopwatch.Elapsed;
+            if (_lastSnapshotSaveAt.HasValue
+                && (elapsed - _lastSnapshotSaveAt.Value).TotalSeconds < _settings.SensorSnapshotSaveIntervalSeconds)
             {
                 return;
             }
@@ -1084,12 +1092,12 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                     _remoteTelemetryService.SendSensorSnapshot(record);
                 }
 
-                _lastSensorSnapshotSavedAt = now;
+                _lastSnapshotSaveAt = elapsed;
             }
             catch (Exception ex)
             {
                 AddActivityLog("저장소", "센서 스냅샷 저장 실패: " + ex.Message, "WARN");
-                _lastSensorSnapshotSavedAt = now;
+                _lastSnapshotSaveAt = elapsed;
             }
         }
 
@@ -1116,7 +1124,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             SummaryText = "TwinCAT ADS 데이터를 읽을 수 없습니다. TwinCAT 런타임, ADS Route, 851 포트, GVL.NX_* 변수를 확인하세요. " + ex.Message;
         }
 
-        private void EvaluateRiskRules(double pressure, double vibration, double temperature, double humidity)
+        private void EvaluateRiskRules(double pressure, double vibration, double temperature, double humidity, bool allowAccumulation = true)
         {
             var warningCount = 0;
             var details = string.Empty;
@@ -1153,11 +1161,13 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
 
             // 윈도우 만료 검사는 정상/경고 두 경로 모두에서 선행 수행한다. 만료 시에만 누적 카운트와
             // 자동 종료 발동 플래그를 리셋해, 윈도우가 살아있는 동안에는 별개 경고 이벤트가 누적되도록 한다.
-            if (_riskWindowStartedAt != DateTime.MinValue && (now - _riskWindowStartedAt).TotalSeconds > _settings.RiskWindowSeconds)
+            // 값 정지(stale) 상태에서는 위험 상태를 동결하므로 만료 리셋도 수행하지 않는다.
+            if (allowAccumulation && _riskWindowStartedAt != DateTime.MinValue && (now - _riskWindowStartedAt).TotalSeconds > _settings.RiskWindowSeconds)
             {
                 _riskWarningCount = 0;
                 _riskWindowStartedAt = DateTime.MinValue;
                 _warningSustainedSince = DateTime.MinValue;
+                _warningClearedSince = DateTime.MinValue;
                 _autoShutdownIssued = false;
             }
 
@@ -1165,8 +1175,24 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             {
                 // 현재 위험 표시만 해제하고 카운트/윈도우는 유지한다. 윈도우 내에 다시 경고가 발생하면
                 // 별개 이벤트로 누적되어야 자동 종료(예: 60초 내 2회)가 가능하다.
-                _wasRiskWarningActive = false;
-                _warningSustainedSince = DateTime.MinValue;
+                // 단, 임계값 근처 노이즈로 경고가 잠깐 사라졌다 다시 뜨는 것을 매번 "별개 이벤트"로
+                // 중복 누적하지 않도록, 정상 상태가 WarningClearDebounceSeconds 이상 지속될 때에만
+                // 경고 이벤트가 끝난 것으로 확정한다.
+                if (allowAccumulation && _wasRiskWarningActive)
+                {
+                    if (_warningClearedSince == DateTime.MinValue)
+                    {
+                        _warningClearedSince = now;
+                    }
+
+                    if ((now - _warningClearedSince).TotalSeconds >= WarningClearDebounceSeconds)
+                    {
+                        _wasRiskWarningActive = false;
+                        _warningSustainedSince = DateTime.MinValue;
+                        _warningClearedSince = DateTime.MinValue;
+                    }
+                }
+
                 _forceShutdownAllowedByRisk = false;
                 RiskStatusText = "AI 정상";
                 RiskStatusTone = "Normal";
@@ -1185,33 +1211,42 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
                 return;
             }
 
-            if (_riskWindowStartedAt == DateTime.MinValue)
+            // 값 정지(stale) 상태에서는 동결된 값으로 카운트를 누적하거나 자동 종료를 발동하지 않는다.
+            // 표시(램프/상태)만 현재 값 기준으로 갱신하고, 누적 상태는 그대로 동결한다.
+            if (allowAccumulation)
             {
-                _riskWindowStartedAt = now;
+                if (_riskWindowStartedAt == DateTime.MinValue)
+                {
+                    _riskWindowStartedAt = now;
+                }
+
+                if (_warningSustainedSince == DateTime.MinValue)
+                {
+                    _warningSustainedSince = now;
+                }
+
+                // 경고가 다시 발생했으므로 해제 디바운스 타이머를 리셋한다.
+                _warningClearedSince = DateTime.MinValue;
+
+                // 경고 "진입"(정상→경고 전이)일 때 1회 센다. 동시에 여러 센서가 초과해도 진입 1회다.
+                // 그리고 경고가 끊기지 않고 SustainedWarningRecountSeconds(10초) 이상 지속되면, 지속되는 동안
+                // 그 간격마다 1회씩 추가로 누적해 "장시간 위험 유지"도 자동 종료로 이어지게 한다.
+                if (!_wasRiskWarningActive)
+                {
+                    _riskWarningCount += 1;
+                    AddActivityLog("AI 규칙", details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
+                }
+                else if ((now - _warningSustainedSince).TotalSeconds >= SustainedWarningRecountSeconds)
+                {
+                    _riskWarningCount += 1;
+                    _warningSustainedSince = now;
+                    AddActivityLog("AI 규칙", details + " 경고 " + SustainedWarningRecountSeconds + "초 이상 지속. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
+                }
+
+                _wasRiskWarningActive = true;
+                _forceShutdownAllowedByRisk = true;
             }
 
-            if (_warningSustainedSince == DateTime.MinValue)
-            {
-                _warningSustainedSince = now;
-            }
-
-            // 경고 "진입"(정상→경고 전이)일 때 1회 센다. 동시에 여러 센서가 초과해도 진입 1회다.
-            // 그리고 경고가 끊기지 않고 SustainedWarningRecountSeconds(10초) 이상 지속되면, 지속되는 동안
-            // 그 간격마다 1회씩 추가로 누적해 "장시간 위험 유지"도 자동 종료로 이어지게 한다.
-            if (!_wasRiskWarningActive)
-            {
-                _riskWarningCount += 1;
-                AddActivityLog("AI 규칙", details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
-            }
-            else if ((now - _warningSustainedSince).TotalSeconds >= SustainedWarningRecountSeconds)
-            {
-                _riskWarningCount += 1;
-                _warningSustainedSince = now;
-                AddActivityLog("AI 규칙", details + " 경고 " + SustainedWarningRecountSeconds + "초 이상 지속. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit, _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "RISK" : "WARN");
-            }
-
-            _wasRiskWarningActive = true;
-            _forceShutdownAllowedByRisk = true;
             RiskStatusText = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "AI 위험" : "AI 경고";
             RiskStatusTone = _riskWarningCount >= _settings.AutoShutdownWarningLimit ? "Danger" : "Warning";
             SyncWarningLamp(true);
@@ -1219,7 +1254,7 @@ namespace WPFSemiconductorEquipmentUI_Sensor.ViewModels
             RiskDetailText = details + " 기준 초과. " + _settings.RiskWindowSeconds + "초 내 위험 카운트 " + _riskWarningCount + "/" + _settings.AutoShutdownWarningLimit;
             NotifyForceShutdownStateChanged();
 
-            if (_riskWarningCount >= _settings.AutoShutdownWarningLimit && !_autoShutdownIssued)
+            if (allowAccumulation && _riskWarningCount >= _settings.AutoShutdownWarningLimit && !_autoShutdownIssued)
             {
                 _autoShutdownIssued = true;
                 ExecuteForceShutdown(true);

@@ -39,10 +39,18 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
 
         public bool CheckHealth()
         {
-            var request = CreateRequest("/api/health", "GET");
-            using (var response = (HttpWebResponse)request.GetResponse())
+            try
             {
-                return response.StatusCode == HttpStatusCode.OK;
+                var request = CreateRequest("/api/health", "GET");
+                using (var response = (HttpWebResponse)request.GetResponse())
+                {
+                    return response.StatusCode == HttpStatusCode.OK;
+                }
+            }
+            catch (WebException)
+            {
+                // 헬스 체크는 연결 실패를 예외가 아니라 "비정상"으로 보고한다.
+                return false;
             }
         }
 
@@ -54,9 +62,17 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             request.ContentType = "application/json; charset=utf-8";
             request.ContentLength = bytes.Length;
 
-            using (var stream = request.GetRequestStream())
+            // 요청 전송(연결) 단계의 WebException도 응답 단계와 동일하게 친화적인 한국어 메시지로 감싼다.
+            try
             {
-                stream.Write(bytes, 0, bytes.Length);
+                using (var stream = request.GetRequestStream())
+                {
+                    stream.Write(bytes, 0, bytes.Length);
+                }
+            }
+            catch (WebException ex)
+            {
+                throw new InvalidOperationException(ReadErrorMessage(ex), ex);
             }
 
             return ReadResponse<T>(request);
@@ -105,7 +121,15 @@ namespace WPFSemiconductorEquipmentUI_Sensor.Services
             }
 
             var response = ex.Response as HttpWebResponse;
-            using (var stream = ex.Response.GetResponseStream())
+            var responseStream = ex.Response.GetResponseStream();
+            if (responseStream == null)
+            {
+                return response == null
+                    ? "Flask API 요청에 실패했습니다."
+                    : "Flask API 요청에 실패했습니다. HTTP " + (int)response.StatusCode + " " + response.StatusDescription;
+            }
+
+            using (var stream = responseStream)
             using (var reader = new StreamReader(stream, Encoding.UTF8))
             {
                 var body = reader.ReadToEnd();
